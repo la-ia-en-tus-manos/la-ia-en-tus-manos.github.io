@@ -38,7 +38,8 @@ function pintarAcceso(error) {
   vaciar(app);
   const f = el('form', { class: 'tarjeta', style: 'max-width:420px;margin:60px auto' });
   const inp = el('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Clave del profesor', required: true });
-  f.append(pildora('Panel del profesor'), el('h1', { style: 'font-size:1.6rem' }, 'Entrar'), error ? el('div', { class: 'aviso error' }, error) : null, el('label', { class: 'campo' }, el('span', {}, 'Clave'), inp), el('button', { class: 'boton bloque', type: 'submit' }, 'Entrar'));
+  // append() nativo convierte null en el texto «null»: solo se pasan nodos reales.
+  f.append(...[pildora('Panel del profesor'), el('h1', { style: 'font-size:1.6rem' }, 'Entrar'), error ? el('div', { class: 'aviso error' }, error) : null, el('label', { class: 'campo' }, el('span', {}, 'Clave'), inp), el('button', { class: 'boton bloque', type: 'submit' }, 'Entrar')].filter(Boolean));
   f.addEventListener('submit', (e) => { e.preventDefault(); clave = inp.value.trim(); sessionStorage.setItem('profe_clave', clave); iniciar(); });
   app.append(f);
 }

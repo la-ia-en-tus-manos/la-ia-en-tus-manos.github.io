@@ -201,7 +201,7 @@ function pintarEspera() {
   const a = estado.alumno;
   app.append(pildora('Lista de espera', 'ye'), el('h1', {}, `Hola, ${a.nombre.split(' ')[0]}`),
     el('div', { class: 'tarjeta tinte c-ye' }, el('h2', {}, `Eres el n.º ${a.posicion_espera} de la lista de espera`), el('p', { class: 'sub' }, 'Si alguien deja su plaza, subirás automáticamente y te avisaremos por correo. Esta página también se actualizará sola.')),
-    estado.config.fecha ? el('p', {}, el('strong', {}, 'Cuándo: '), estado.config.fecha_legible) : null,
+    el('p', {}, estado.config.fecha ? [el('strong', {}, 'Cuándo: '), estado.config.fecha_legible] : [el('strong', {}, 'Cuándo: '), 'fecha por confirmar']),
     el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, 'Salir de la lista de espera'));
   pintarIconos(app);
 }

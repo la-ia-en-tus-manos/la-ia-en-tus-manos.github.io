@@ -119,10 +119,8 @@ export function cargarInicio(contenedor, texto = 'Cargando…') {
 }
 
 export function errorPantalla(contenedor, mensaje, reintentar) {
-  vaciar(contenedor).append(
-    el('div', { class: 'aviso error' }, el('strong', {}, 'Algo no ha ido bien. '), mensaje),
-    reintentar ? el('button', { class: 'boton secundario', onclick: reintentar }, 'Volver a intentarlo') : null
-  );
+  vaciar(contenedor).append(el('div', { class: 'aviso error' }, el('strong', {}, 'Algo no ha ido bien. '), mensaje));
+  if (reintentar) contenedor.append(el('button', { class: 'boton secundario', onclick: reintentar }, 'Volver a intentarlo'));
 }
 
 export function guardarLocal(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) { /* privado */ } }
