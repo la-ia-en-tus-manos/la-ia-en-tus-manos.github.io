@@ -2,7 +2,7 @@
 // Devuelve la imagen tapada y la cobertura de cada zona sensible (0..1) para que el servidor dé la medalla.
 import { el, icono, pintarIconos, toast } from './ui.js';
 
-const GROSOR = 0.055; // grosor del pincel, fracción del ancho de la imagen
+const GROSOR = 0.032; // grosor del pincel, fracción del ancho de la imagen
 
 export function abrirTapar(blob, zonas, opciones = {}) {
   return new Promise((resolver) => {
