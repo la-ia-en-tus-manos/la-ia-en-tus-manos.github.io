@@ -87,6 +87,11 @@ function formulario(esEspera) {
       )),
       el('span', { class: 'ayuda' }, t('cambiar_despues'))
     ),
+    el('fieldset', { class: 'campo', style: 'border:0;padding:0;margin:0 0 18px' },
+      el('legend', { style: 'font-weight:600;margin-bottom:4px' }, t('personaje_pregunta')),
+      el('span', { class: 'ayuda', style: 'margin:0 0 8px' }, t('personaje_ayuda')),
+      el('div', { class: 'opciones tres' }, ...[['f', 'LuUserRound'], ['m', 'LuUserRound'], ['x', 'LuShuffle']].map(([v, ic]) =>
+        el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'personaje', value: v, checked: v === 'x' }), icono(ic), el('span', {}, el('strong', {}, t(`personaje_${v}`))))))),
     el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'consentimiento', required: true }), el('span', {}, t('consiento_1'), el('strong', {}, pub.responsable_nombre || t('organizador')), t('consiento_2'), el('span', { class: 'apagado' }, pub.retencion_texto, pub.responsable_correo ? t('contacto', { correo: pub.responsable_correo }) : ''))),
     el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'avisos' }), el('span', {}, t('avisos'))),
     el('div', { class: 'sr', 'aria-hidden': 'true' }, el('label', {}, t('campo_trampa'), el('input', { type: 'text', name: 'web', tabindex: '-1', autocomplete: 'off' }))),
@@ -106,7 +111,7 @@ function formulario(esEspera) {
     boton.disabled = true;
     boton.textContent = t('enviando');
     try {
-      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn, idioma: idiomaActual() });
+      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn, idioma: idiomaActual(), personaje: d.personaje || 'x' });
       if (r.repetido) {
         vaciar(app).append(...cabecera().filter(Boolean), el('div', { class: 'tarjeta tinte' }, el('h2', {}, t('ya_estabas')), el('p', { class: 'sub' }, t('reenviado'))));
       } else {

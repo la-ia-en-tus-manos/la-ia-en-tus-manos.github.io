@@ -32,6 +32,7 @@ const ETIQUETA_CONFIG = {
   certificado_titulo_pt: ['Diploma · título en portugués', 'text'], certificado_texto_pt: ['Diploma · texto en portugués', 'textarea'], certificado_firmante_cargo_pt: ['Diploma · cargo en portugués', 'text']
 };
 const NOMBRE_IDIOMA = { es: 'ES', 'pt-BR': 'PT-BR' };
+const NOMBRE_GENERO = { f: 'mujer', m: 'hombre', x: 'indiferente', '': '—' };
 const NOMBRE_ESTADO = { borrador: 'Borrador', inscripcion_abierta: 'Inscripción abierta', inscripcion_cerrada: 'Inscripción cerrada', taller_en_curso: 'Taller en curso', terminado: 'Terminado' };
 
 async function iniciar() {
@@ -298,7 +299,8 @@ function pintarInscritos() {
       el('td', {}, el('strong', {}, i.numero || '—')),
       el('td', {}, el('strong', {}, i.nombre), i.veterano ? el('span', { class: 'chip c-ye', style: 'margin-left:6px' }, 'repite') : null, el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
       el('td', {}, el('small', {}, i.correo, i.telefono ? [el('br'), i.telefono] : null)),
-      el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma))),
+      el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma), ' ',
+        i.estado === 'plaza' ? el('span', { class: `chip ${i.personaje !== 'x' && i.genero_kit !== i.personaje ? 'c-rd' : 'c-gr'}`, title: `prefiere: ${NOMBRE_GENERO[i.personaje]}` }, `personaje ${NOMBRE_GENERO[i.genero_kit]}`) : el('small', { class: 'apagado' }, `prefiere ${NOMBRE_GENERO[i.personaje]}`))),
       el('td', {}, i.estado === 'plaza' ? [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${Math.round(100 * i.previas / Math.max(1, i.previas_total))}%` })), el('small', {}, `${i.previas} de ${i.previas_total}`)] : ''),
       el('td', {}, el('span', { class: `chip c-${color}` }, i.estado)),
       el('td', {}, el('button', { class: 'boton peque secundario', onclick: () => accionesInscrito(i) }, 'Acciones'))));
@@ -324,6 +326,8 @@ function accionesInscrito(i) {
       el('button', { class: 'boton peligro', onclick: () => accion({ accion: 'borrar' }, 'Datos borrados', `¿Borrar todos los datos de ${i.nombre}? No se puede deshacer.`) }, icono('LuTrash2'), 'Borrar sus datos')),
     el('h3', { style: 'margin-top:14px' }, 'Modo'),
     el('div', { class: 'botones' }, ...['ambos', 'portatil', 'movil'].map((m) => el('button', { class: `boton peque ${i.modo === m ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'modo', modo: m }, 'Modo cambiado') }, NOMBRE_MODO[m]))),
+    i.estado === 'plaza' ? el('h3', { style: 'margin-top:14px' }, `Personaje (prefiere ${NOMBRE_GENERO[i.personaje]})`) : null,
+    i.estado === 'plaza' ? el('div', { class: 'botones' }, ...['f', 'm'].map((g) => el('button', { class: `boton peque ${i.genero_kit === g ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'genero_kit', genero: g }, 'Personaje cambiado') }, NOMBRE_GENERO[g]))) : null,
     el('h3', { style: 'margin-top:14px' }, 'Idioma'),
     el('div', { class: 'botones' }, ...(estado.contenido.idiomas || ['es']).map((id) => el('button', { class: `boton peque ${i.idioma === id ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'idioma', idioma: id }, 'Idioma cambiado') }, NOMBRE_IDIOMA[id] || id)))
   ]);
@@ -445,7 +449,7 @@ async function pintarSoluciones() {
     r.kits.forEach((k) => {
       caja.append(el('div', { class: `tarjeta ${k.alumno ? 'tinte' : ''}` },
         el('div', { style: 'display:flex;justify-content:space-between;gap:10px;align-items:baseline' }, el('h3', {}, `Kit ${k.numero} · ${k.personaje.nombre}`), el('span', { class: 'apagado' }, k.alumno ? `${k.alumno}${k.idioma && k.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[k.idioma]}` : ''}` : 'sin asignar')),
-        el('p', { class: 'apagado' }, `${k.personaje.edad} años · ${k.personaje.oficio} · ${k.personaje.problema}`),
+        el('p', { class: 'apagado' }, `${k.genero === 'm' ? 'hombre' : 'mujer'} · ${k.personaje.edad} años · ${k.personaje.oficio} · ${k.personaje.problema}`),
         el('p', {}, el('strong', { class: 'acento' }, 'Guardián debe tapar: '), k.guia.debe_tapar_guardian),
         el('p', {}, el('strong', { class: 'c-rd acento' }, 'M8: '), `${k.mensaje_m8.canal} de ${k.mensaje_m8.de}. ${k.guia.m8_tipo_y_senales}`)));
     });
