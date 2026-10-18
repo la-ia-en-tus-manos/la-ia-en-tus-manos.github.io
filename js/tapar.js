@@ -67,7 +67,7 @@ export function abrirTapar(blob, zonas, opciones = {}) {
       const estado = el('p', { class: 'apagado' }, 'Pinta con el dedo o el ratón sobre la imagen, como con un rotulador. Lo que pintes quedará así al enviarla.');
       const cerrar = (resultado) => { fondo.remove(); URL.revokeObjectURL(imagen.src); resolver(resultado); };
       caja.append(
-        el('h2', {}, opciones.titulo || 'Retocar la imagen'),
+        el('h2', {}, opciones.titulo || 'Rotulador'),
         estado,
         lienzo,
         el('div', { class: 'botones', style: 'margin-top:14px' },

@@ -425,21 +425,36 @@ function seccionImagen(tipo, color) {
     const archivo = new File([blob], nombre, { type: 'image/png' });
     if (zonas.length) {
       // Discreto a propósito: cómo se gana la medalla Guardián no se explica.
-      botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPencil'), tapada ? 'Retocar de nuevo' : 'Retocar'));
+      botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPenLine'), 'Rotulador'));
     }
-    if (puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
+    const movil = /Android|iPhone|iPad/i.test(navigator.userAgent) || matchMedia('(pointer: coarse)').matches;
+    const nota = (texto) => botones.append(el('p', { class: 'apagado', style: 'width:100%;margin:4px 0 0' }, texto));
+    if (movil && puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
+      // En el móvil: la hoja de compartir del sistema; el alumno elige Gemini en la lista.
       botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
         try { await navigator.share({ files: [archivo], title: NOMBRE_IMAGEN[tipo] }); } catch (e) { if (e.name !== 'AbortError') toast('No se ha podido compartir. Usa «Descargar imagen»', 'error'); }
-      } }, icono('LuShare2'), 'Enviar a Gemini'));
+      } }, icono('LuShare2'), 'Compartir con Gemini'));
+      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
+      nota('En la lista que se abre, elige Gemini. Si no aparece, descárgala y súbela en Gemini con el botón +.');
+    } else {
+      // En el portátil: al portapapeles y pegar en el chat (Ctrl+V), o descargar y arrastrar.
+      const puedeCopiar = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem);
+      if (puedeCopiar) {
+        botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
+          try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Imagen copiada. En Gemini, pégala en el chat con Ctrl+V'); }
+          catch (e) { toast('No se ha podido copiar. Descárgala y arrástrala a Gemini', 'error'); }
+        } }, icono('LuClipboardCopy'), 'Copiar imagen'));
+      }
+      botones.append(el('a', { class: 'boton secundario', href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener' }, icono('LuExternalLink'), 'Abrir Gemini'));
+      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
+      nota(puedeCopiar ? 'Copia la imagen, abre Gemini y pégala en el chat con Ctrl+V. O descárgala y arrástrala al chat.' : 'Descárgala y arrástrala al chat de Gemini, o súbela con el botón +.');
     }
-    botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
-    if (estado.alumno.modo === 'movil' && !puedeCompartirArchivos()) botones.append(el('p', { class: 'apagado', style: 'width:100%' }, 'Descárgala y súbela a Gemini con el botón +.'));
     pintarIconos(caja);
   };
 
   const tapar = async (blobActual) => {
     const original = imagenesCache[tipo];
-    const r = await abrirTapar(original, zonas, { titulo: 'Retocar la imagen' });
+    const r = await abrirTapar(original, zonas, { titulo: 'Rotulador' });
     if (!r) return;
     imagenesCache[`${tipo}_tapada`] = r.blob;
     mostrar(r.blob, true);
