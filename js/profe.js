@@ -6,7 +6,10 @@ const app = document.getElementById('app');
 let clave = sessionStorage.getItem('profe_clave') || '';
 let estado = null;
 let pestana = leerLocal('profe_pestana') || 'inicio';
-let vivoTimer = null;
+let vivoTimer = null;        // Worker que marca el ritmo del refresco (los temporizadores de un worker no se frenan en segundo plano)
+let ayudasVistas = new Set(); // ids de alumnos cuya petición de ayuda ya se avisó
+let audio = null;             // AudioContext, solo tras un gesto del usuario
+const TITULO_BASE = document.title;
 
 const ETIQUETA_CONFIG = {
   nombre_taller: ['Nombre del taller', 'text'], numero_taller: ['Número de taller', 'text'], nivel: ['Nivel', 'text'],
@@ -45,7 +48,8 @@ async function recargar(silencioso = true) {
 }
 
 function pintar() {
-  clearInterval(vivoTimer);
+  if (vivoTimer) { vivoTimer.terminate(); vivoTimer = null; }
+  document.title = TITULO_BASE;
   vaciar(app);
   const cfg = estado.config;
   app.append(el('div', { class: 'cabecera-alumno' },
@@ -109,7 +113,44 @@ function pintarVivo() {
     } catch (e) { toast(e.message, 'error'); }
   };
   refrescar();
-  vivoTimer = setInterval(() => { if (!document.hidden) refrescar(); }, REFRESCO_VIVO_S * 1000);
+  // Un worker sigue contando aunque la pestaña esté detrás del PowerPoint; un setInterval normal se frena.
+  vivoTimer = new Worker(URL.createObjectURL(new Blob([`setInterval(() => postMessage(1), ${REFRESCO_VIVO_S * 1000});`], { type: 'text/javascript' })));
+  vivoTimer.onmessage = refrescar;
+}
+
+function avisosActivos() { return 'Notification' in window && Notification.permission === 'granted'; }
+
+async function activarAvisos() {
+  if (!('Notification' in window)) { toast('Este navegador no admite notificaciones', 'error'); return; }
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); } catch (e) { /* sin sonido */ }
+  const permiso = await Notification.requestPermission();
+  if (permiso === 'granted') { toast('Avisos activados: sonarán aunque el navegador esté detrás'); pitido(); }
+  else toast('Sin permiso para notificaciones. Actívalo en el candado de la barra de direcciones', 'error', 5000);
+  pintar();
+}
+
+function pitido() {
+  if (!audio) return;
+  try {
+    [0, 0.18].forEach((inicio, i) => {
+      const o = audio.createOscillator(); const g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = i ? 1180 : 880;
+      g.gain.setValueAtTime(0.0001, audio.currentTime + inicio);
+      g.gain.exponentialRampToValueAtTime(0.4, audio.currentTime + inicio + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + inicio + 0.16);
+      o.connect(g).connect(audio.destination); o.start(audio.currentTime + inicio); o.stop(audio.currentTime + inicio + 0.18);
+    });
+  } catch (e) { /* nada */ }
+}
+
+function avisarAyuda(nuevas, total) {
+  pitido();
+  if (!avisosActivos()) return;
+  const quien = nuevas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ');
+  try {
+    const n = new Notification(`¡AYUDA! ${quien}`, { body: total > nuevas.length ? `${total} alumnos esperan ayuda` : 'Toca para ver el panel', tag: 'ayuda-' + Date.now(), requireInteraction: true, icon: 'assets/ponente.png' });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* nada */ }
 }
 
 function pintarTablaVivo(caja, v) {
@@ -117,7 +158,14 @@ function pintarTablaVivo(caja, v) {
   const misiones = estado.contenido.misiones.filter((m) => m.id !== 'JEFE');
   const medallas = estado.contenido.medallas;
   const ayudas = v.alumnos.filter((a) => a.ayuda);
+  const nuevas = ayudas.filter((a) => !ayudasVistas.has(a.id));
+  ayudasVistas = new Set(ayudas.map((a) => a.id));
+  if (nuevas.length) avisarAyuda(nuevas, ayudas.length);
+  document.title = ayudas.length ? `(${ayudas.length}) ¡AYUDA! · ${TITULO_BASE}` : TITULO_BASE;
   caja.append(el('p', { class: 'apagado' }, `Actualizado ${fechaHora(v.ts)} · se refresca cada ${REFRESCO_VIVO_S} s · ${v.alumnos.length} alumnos con plaza`));
+  caja.append(avisosActivos()
+    ? el('p', { class: 'apagado' }, icono('LuBellRing'), ' Avisos de ayuda activados: notificación y sonido aunque el navegador esté detrás.')
+    : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Activa los avisos de ayuda '), 'para recibir una notificación y un sonido aunque estés con el PowerPoint delante. ', el('button', { class: 'boton peque', onclick: activarAvisos }, icono('LuBell'), 'Activar avisos')));
   if (ayudas.length) caja.append(el('div', { class: 'aviso error' }, icono('LuHand'), ' ', el('strong', {}, `${ayudas.length} necesita${ayudas.length > 1 ? 'n' : ''} ayuda: `), ayudas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ')));
   if (v.estado !== 'taller_en_curso') caja.append(el('div', { class: 'aviso atencion' }, 'El taller no está en curso: los alumnos aún no ven su caso.'));
 
