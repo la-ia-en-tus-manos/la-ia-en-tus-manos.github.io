@@ -445,9 +445,8 @@ function seccionImagen(tipo, color) {
           catch (e) { toast('No se ha podido copiar. Descárgala y arrástrala a Gemini', 'error'); }
         } }, icono('LuClipboardCopy'), 'Copiar imagen'));
       }
-      botones.append(el('a', { class: 'boton secundario', href: 'https://gemini.google.com/app', target: '_blank', rel: 'noopener' }, icono('LuExternalLink'), 'Abrir Gemini'));
       botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
-      nota(puedeCopiar ? 'Copia la imagen, abre Gemini y pégala en el chat con Ctrl+V. O descárgala y arrástrala al chat.' : 'Descárgala y arrástrala al chat de Gemini, o súbela con el botón +.');
+      nota(puedeCopiar ? 'Copia la imagen y pégala en el chat de Gemini con Ctrl+V. O descárgala y arrástrala al chat.' : 'Descárgala y arrástrala al chat de Gemini, o súbela con el botón +.');
     }
     pintarIconos(caja);
   };
