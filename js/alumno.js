@@ -44,17 +44,27 @@ function programarRefresco() {
     try {
       const nuevo = await get('alumno', { t: token });
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
+      const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.config, e.encuesta_hecha]);
+      const cambio = huella(nuevo) !== huella(estado);
       estado = nuevo;
       if (cambioFase) { vista = { tipo: 'auto' }; pintar(); }
-      else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar();
+      else if (!cambio) return;                       // nada nuevo: no se toca lo que el alumno está leyendo
+      else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar(true);
       else actualizarSuave();
     } catch (e) { /* siguiente intento */ }
   }, segundos * 1000);
 }
 
-function pintar() {
+function pintar(conservar = false) {
   clearInterval(cuentaAtrasTimer);
+  // En un refresco automático se conservan los desplegables abiertos y la posición de la página.
+  const abiertos = conservar ? [...app.querySelectorAll('details[open]')].map((d) => d.querySelector('summary')?.textContent) : [];
+  const scrollY = window.scrollY;
   vaciar(app);
+  if (conservar) queueMicrotask(() => {
+    app.querySelectorAll('details').forEach((d) => { if (abiertos.includes(d.querySelector('summary')?.textContent)) d.open = true; });
+    window.scrollTo(0, scrollY);
+  });
   app.className = 'pagina';
   document.body.className = '';
   const a = estado.alumno;
@@ -139,7 +149,7 @@ function seccionPrevias() {
     const alternar = async () => {
       try {
         estado.progreso = await post('previa', { t: token, id: p.id, hecho: !hecho });
-        pintar();
+        pintar(true);
         if (!hecho) toast('Misión previa cumplida');
       } catch (e) { toast(e.message, 'error'); }
     };
@@ -291,7 +301,7 @@ function seccionMedallas() {
       estado.progreso = r.progreso;
       estado.contenido.medallas = estado.contenido.medallas.map((m) => (m.id === r.medalla.id ? r.medalla : m));
       input.value = '';
-      pintar();
+      pintar(true);
       const nodo = app.querySelector(`[data-medalla="${r.medalla.id}"]`);
       if (nodo) nodo.scrollIntoView({ behavior: 'smooth', block: 'center' });
       toast(`¡Medalla ${r.medalla.nombre} desbloqueada!`);
@@ -309,7 +319,7 @@ function barraAyuda() {
         const r = await post('ayuda', { t: token, activa: !activa });
         estado.alumno.ayuda = r.ayuda;
         toast(r.ayuda ? 'El profesor ya sabe que necesitas ayuda. Ahora va' : 'Aviso retirado');
-        pintar();
+        pintar(true);
       } catch (e) { toast(e.message, 'error'); }
     } }, icono('LuHand'), activa ? 'Ayuda pedida · cancelar' : '¡AYUDA!'));
 }
