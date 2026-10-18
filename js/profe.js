@@ -28,6 +28,7 @@ const ETIQUETA_CONFIG = {
   certificado_titulo: ['Diploma · título', 'text'], certificado_texto: ['Diploma · texto (vale {nombre}, {taller}, {numero_taller}, {nivel}, {fecha})', 'textarea'],
   certificado_firmante: ['Diploma · quien firma', 'text'], certificado_firmante_cargo: ['Diploma · cargo de quien firma', 'text'], certificado_lugar: ['Diploma · lugar', 'text'],
   certificado_logo_url: ['Diploma · logo (dirección de una imagen; vacío = emblema de la app)', 'url'],
+  certificado_firma_url: ['Diploma · firma (dirección de una imagen de tu rúbrica; vacío = rúbrica dibujada)', 'url'],
   certificado_titulo_pt: ['Diploma · título en portugués', 'text'], certificado_texto_pt: ['Diploma · texto en portugués', 'textarea'], certificado_firmante_cargo_pt: ['Diploma · cargo en portugués', 'text']
 };
 const NOMBRE_IDIOMA = { es: 'ES', 'pt-BR': 'PT-BR' };
@@ -69,9 +70,9 @@ function pintar() {
     el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller)),
     el('div', { style: 'text-align:right' }, el('span', { class: `chip c-${cfg.estado === 'taller_en_curso' ? 'gr' : cfg.estado === 'inscripcion_abierta' ? 'cy' : 'ye'}` }, NOMBRE_ESTADO[cfg.estado]), el('br'),
       el('button', { class: 'boton fantasma peque', style: 'margin-top:8px', onclick: () => { clave = ''; sessionStorage.removeItem('profe_clave'); pintarAcceso(); } }, 'Salir'))));
-  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
+  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
   app.append(el('div', { class: 'pestanas' }, ...pestanas.map(([id, nombre]) => el('button', { class: id === pestana ? 'activa' : '', onclick: () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); } }, nombre))));
-  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
+  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
   pintarIconos(app);
 }
 
@@ -342,6 +343,34 @@ function avisarTodos() {
     el('button', { class: 'boton bloque', onclick: async () => {
       try { const r = await post('p_aviso', { k: clave, asunto: asunto.value, cuerpo: cuerpo.value, destinatarios: destino.value, asunto_pt: asuntoPt.value, cuerpo_pt: cuerpoPt.value }); toast(`Enviados ${r.enviados} de ${r.total}`); cerrar(); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
     } }, icono('LuSend'), 'Enviar')]);
+}
+
+/* ───────────── Diplomas ───────────── */
+
+function pintarDiplomas() {
+  const medallas = estado.contenido.medallas;
+  const lista = estado.inscritos.filter((i) => i.estado === 'plaza');
+  const ids = lista.map((i) => i.id).join(',');
+  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Diplomas'),
+    el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF.'),
+    el('div', { class: 'botones' },
+      lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
+      el('a', { class: 'boton secundario', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra'))));
+  if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay alumnos con plaza.'));
+  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, ''))));
+  const cuerpo = el('tbody');
+  lista.forEach((i) => {
+    cuerpo.append(el('tr', {},
+      el('td', {}, el('strong', {}, i.numero)),
+      el('td', {}, el('strong', {}, i.nombre_certificado || i.nombre), i.nombre_certificado && i.nombre_certificado !== i.nombre ? el('small', { class: 'apagado' }, el('br'), `(inscrito como ${i.nombre})`) : null),
+      el('td', {}, el('div', { class: 'sellos' }, ...medallas.map((m) => el('span', { class: `c-${m.color} ${i.medallas.includes(m.id) ? 'si' : ''}`, title: m.nombre }, m.nombre[0])))),
+      el('td', {}, `${i.misiones.length}`),
+      el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
+      el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
+      el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
+  });
+  tabla.append(cuerpo);
+  app.append(el('div', { class: 'tabla-scroll tarjeta' }, tabla));
 }
 
 /* ───────────── Configuración ───────────── */

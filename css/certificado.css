@@ -61,6 +61,10 @@ body { overflow-x: auto; }
 .dip-pie { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-top: 8mm; }
 .dip-firma { text-align: center; min-width: 70mm; }
 .dip-firma .linea { border-top: 1px solid rgba(255, 255, 255, 0.5); margin-bottom: 6px; }
+.dip-rubrica { color: var(--cy); width: 60mm; margin: 0 auto -6px; }
+.dip-rubrica svg { width: 100%; height: auto; display: block; }
+.dip-rubrica-img { max-width: 60mm; max-height: 22mm; display: block; margin: 0 auto -4px; }
+#diplomas .diploma { margin-bottom: 20px; }
 .dip-firma b { display: block; font-size: 15px; }
 .dip-firma small { color: var(--txt3); font-size: 12px; }
 .dip-fecha { font-size: 14px; color: var(--txt2); }
@@ -70,7 +74,8 @@ body { overflow-x: auto; }
 @media print {
   body { background: #0a0f2c !important; margin: 0; }
   .acciones-diploma, .toast { display: none !important; }
-  .diploma { width: 297mm; height: 210mm; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; page-break-after: avoid; }
+  .diploma { width: 297mm; height: 210mm; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; page-break-after: always; break-after: page; }
+  #diplomas .diploma:last-child { page-break-after: avoid; break-after: auto; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 @media (max-width: 900px) {

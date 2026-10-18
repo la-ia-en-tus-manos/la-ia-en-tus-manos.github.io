@@ -25,16 +25,21 @@ function emblema() {
     <path d="M47 9l1.5 3.5L52 14l-3.5 1.5L47 19l-1.5-3.5L42 14l3.5-1.5z" fill="#08102A"/></svg>` });
 }
 
+// Rúbrica inventada: un trazo continuo a mano alzada, con una subrayada final.
+function rubrica() {
+  return el('div', { class: 'dip-rubrica', html: `<svg viewBox="0 0 260 90" aria-hidden="true"><path d="M14 62c10-26 22-44 30-44 6 0-2 24-8 40-4 11 2 12 9 4 10-12 18-30 24-34 4-3 2 8-1 18-4 13 2 13 9 4 8-10 14-24 19-24 4 0 2 10-1 20-3 12 4 10 11 2 6-7 10-14 16-16 5-1 3 8 1 15-3 10 4 9 10 3 9-9 19-22 27-22 5 0 2 12-1 22-2 9 5 8 11 2 9-9 17-19 27-19 7 0 5 12 2 22-2 7 4 8 9 3 7-7 16-22 24-22 6 0 8 10 7 15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 74c40-6 120-10 190-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".8"/></svg>` });
+}
+
 function rellenar(plantilla, d) {
   return plantilla.replace(/\{(\w+)\}/g, (m, k) => ({ nombre: d.nombre, taller: d.taller, numero_taller: d.numero_taller, nivel: d.nivel, fecha: d.fecha_legible, numero: d.numero }[k] ?? m));
 }
 
-function pintar(d) {
+function pintar(d, contenedor = diploma) {
   setIdioma(d.idioma, false);
   document.documentElement.lang = d.idioma === 'pt-BR' ? 'pt-BR' : 'es';
   document.title = `${d.textos.titulo} · ${d.nombre}`;
   const ganadas = d.medallas.filter((m) => m.ganada).length;
-  vaciar(diploma).append(
+  vaciar(contenedor).append(
     el('div', { class: 'dip-cabecera' },
       el('div', { class: 'dip-logo' }, d.textos.logo_url ? el('img', { src: d.textos.logo_url, alt: '' }) : emblema(),
         el('div', { class: 'dip-marca' }, t('titulo_1'), el('span', {}, t('titulo_2')), el('small', {}, t('pildora_taller', { n: d.numero_taller, nivel: d.nivel })))),
@@ -48,7 +53,7 @@ function pintar(d) {
       el('p', { class: 'dip-resumen' }, t('dip_resumen', { medallas: ganadas, total: d.medallas.length, misiones: d.misiones, total_misiones: d.total_misiones }), d.jefe ? ` · ${t('dip_jefe')}` : '')),
     el('div', { class: 'dip-pie' },
       el('div', { class: 'dip-fecha' }, d.textos.lugar ? `${d.textos.lugar}, ` : '', el('b', {}, d.fecha_legible || t('fecha_por_confirmar_t'))),
-      el('div', { class: 'dip-firma' }, el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
+      el('div', { class: 'dip-firma' }, d.textos.firma_url ? el('img', { class: 'dip-rubrica-img', src: d.textos.firma_url, alt: '' }) : rubrica(), el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
   );
   vaciar(acciones).append(
     el('button', { class: 'boton', onclick: () => window.print() }, icono('LuPrinter'), t('dip_imprimir')),
@@ -64,9 +69,23 @@ async function iniciar() {
       if (d.idioma === 'pt-BR') d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: '{nombre} concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
       return pintar(d);
     }
-    if (params.has('id')) {
-      const k = sessionStorage.getItem('profe_clave') || '';
-      return pintar(await get('p_certificado', { k, id: params.get('id') }));
+    const k = sessionStorage.getItem('profe_clave') || '';
+    if (params.has('id')) return pintar(await get('p_certificado', { k, id: params.get('id') }));
+    if (params.has('ids')) {
+      // Varios diplomas seguidos, uno por página: para imprimirlos todos de una vez.
+      const ids = params.get('ids').split(',').filter(Boolean);
+      diploma.replaceWith(...[]);
+      const lienzo = el('div', { id: 'diplomas' });
+      document.body.append(lienzo);
+      for (const id of ids) {
+        const caja = el('main', { class: 'diploma' });
+        lienzo.append(caja);
+        try { pintar(await get('p_certificado', { k, id }), caja); } catch (e) { vaciar(caja).append(el('div', { class: 'aviso error' }, `${id}: ${e.message}`)); }
+      }
+      vaciar(acciones).append(el('button', { class: 'boton', onclick: () => window.print() }, icono('LuPrinter'), `${t('dip_imprimir')} (${ids.length})`));
+      document.title = `${ids.length} diplomas`;
+      pintarIconos(document.body);
+      return;
     }
     pintar(await get('certificado', { t: params.get('t') || '' }));
   } catch (e) {
