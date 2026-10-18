@@ -130,6 +130,7 @@ function pintarPrevio() {
   app.append(el('div', { class: 'tarjeta candado c-vi' }, insignia('LuLock', 'vi', 'grande'), el('h2', {}, t('caso_bloqueado')), el('p', { class: 'sub' }, cfg.pista_caso)));
 
   app.append(seccionPrevias());
+  app.append(seccionGemini());
 
   const extras = el('div', { class: 'tarjeta' }, el('h2', {}, t('tu_inscripcion')),
     el('p', {}, el('strong', {}, t('vendras_con')), nombreModo(a.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))),
@@ -167,6 +168,19 @@ function seccionPrevias() {
     caja.append(fila);
   });
   return caja;
+}
+
+// Cómo crear la cuenta de Google y abrir Gemini, para quien nunca lo ha usado.
+function seccionGemini() {
+  const enlace = (href, texto) => el('a', { href, target: '_blank', rel: 'noopener' }, texto);
+  return el('div', { class: 'tarjeta c-bl' }, pildora('Gemini', 'bl'), el('h2', {}, t('gemini_titulo')), el('p', { class: 'sub' }, t('gemini_intro')),
+    el('ol', { class: 'pasos' },
+      el('li', {}, el('span', {}, el('strong', {}, t('gemini_sin_cuenta_1')), enlace('https://accounts.google.com/signup', t('gemini_sin_cuenta_2')), t('gemini_sin_cuenta_3'))),
+      el('li', {}, el('span', {}, el('strong', {}, t('gemini_con_cuenta_1')), enlace('https://gemini.google.com', 'gemini.google.com'), t('gemini_con_cuenta_2'))),
+      el('li', {}, el('span', {}, el('strong', {}, t('gemini_app_1')), enlace('https://play.google.com/store/apps/details?id=com.google.android.apps.bard', t('gemini_app_android')), t('gemini_app_o'), enlace('https://apps.apple.com/app/google-gemini/id6477489729', t('gemini_app_ios')), t('gemini_app_2')))),
+    el('div', { class: 'botones' },
+      el('a', { class: 'boton c-bl', href: 'https://gemini.google.com', target: '_blank', rel: 'noopener' }, icono('LuSparkles'), t('abrir_gemini')),
+      el('a', { class: 'boton secundario c-bl', href: 'https://accounts.google.com/signup', target: '_blank', rel: 'noopener' }, icono('LuUserPlus'), t('crear_cuenta'))));
 }
 
 function descargarIcs() {

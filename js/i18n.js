@@ -79,7 +79,12 @@ const D = {
     antes_irte: 'Antes de irte', nombre_certificado: 'Nombre para el certificado', revisalo: 'Revísalo: así saldrá impreso.',
     seguro_ia: '¿Cómo de seguro te sientes ahora usando IA? (1 = nada, 5 = mucho)', mision_util: '¿Qué misión te ha resultado más útil?', elige: 'Elige una',
     mejorarias: '¿Qué mejorarías?', mejorar_ph: 'Lo que quieras contarnos', aviso_t2: 'Avísame cuando haya Taller 2.', enviar: 'Enviar',
-    err_seguridad: 'Dinos de 1 a 5 cómo de seguro te sientes', gracias_proximo: '¡Gracias! Hasta el próximo taller'
+    err_seguridad: 'Dinos de 1 a 5 cómo de seguro te sientes', gracias_proximo: '¡Gracias! Hasta el próximo taller',
+    gemini_titulo: 'Cómo entrar en Gemini', gemini_intro: 'Gemini es la inteligencia artificial de Google que usaremos en el taller. Es gratis; solo hace falta una cuenta de Google (la de Gmail).',
+    gemini_sin_cuenta_1: 'Si no tienes cuenta de Google: ', gemini_sin_cuenta_2: 'créala aquí', gemini_sin_cuenta_3: '. Te pedirá nombre, una dirección de correo nueva, una contraseña y tu número de móvil para enviarte un código.',
+    gemini_con_cuenta_1: 'Si ya tienes cuenta (Gmail): entra en ', gemini_con_cuenta_2: '. También lo tienes dentro de Gmail: pulsa el icono de los nueve puntitos (arriba a la derecha) y elige Gemini.',
+    gemini_app_1: 'En el móvil: instala la app Gemini desde ', gemini_app_android: 'Google Play', gemini_app_o: ' (Android) o la ', gemini_app_ios: 'App Store', gemini_app_2: ' (iPhone) y entra con tu cuenta.',
+    abrir_gemini: 'Abrir Gemini', crear_cuenta: 'Crear cuenta de Google'
   },
   'pt-BR': {
     cargando: 'Carregando…', reintentar: 'Tentar de novo', algo_mal: 'Algo deu errado. ', cerrar: 'Fechar', guardar: 'Salvar', cancelar: 'Cancelar',
@@ -148,7 +153,12 @@ const D = {
     antes_irte: 'Antes de ir', nombre_certificado: 'Nome para o certificado', revisalo: 'Confira: é assim que vai sair impresso.',
     seguro_ia: 'Quão seguro você se sente agora usando IA? (1 = nada, 5 = muito)', mision_util: 'Qual missão foi mais útil para você?', elige: 'Escolha uma',
     mejorarias: 'O que você melhoraria?', mejorar_ph: 'O que quiser nos contar', aviso_t2: 'Me avise quando houver a Oficina 2.', enviar: 'Enviar',
-    err_seguridad: 'Diga de 1 a 5 quão seguro você se sente', gracias_proximo: 'Obrigado! Até a próxima oficina'
+    err_seguridad: 'Diga de 1 a 5 quão seguro você se sente', gracias_proximo: 'Obrigado! Até a próxima oficina',
+    gemini_titulo: 'Como entrar no Gemini', gemini_intro: 'O Gemini é a inteligência artificial do Google que usaremos na oficina. É grátis; só precisa de uma conta do Google (a do Gmail).',
+    gemini_sin_cuenta_1: 'Se você não tem conta do Google: ', gemini_sin_cuenta_2: 'crie aqui', gemini_sin_cuenta_3: '. Vai pedir nome, um endereço de e-mail novo, uma senha e seu número de celular para enviar um código.',
+    gemini_con_cuenta_1: 'Se você já tem conta (Gmail): entre em ', gemini_con_cuenta_2: '. Também está dentro do Gmail: toque no ícone dos nove pontinhos (no canto superior direito) e escolha Gemini.',
+    gemini_app_1: 'No celular: instale o app Gemini pela ', gemini_app_android: 'Google Play', gemini_app_o: ' (Android) ou pela ', gemini_app_ios: 'App Store', gemini_app_2: ' (iPhone) e entre com sua conta.',
+    abrir_gemini: 'Abrir o Gemini', crear_cuenta: 'Criar conta do Google'
   }
 };
 
