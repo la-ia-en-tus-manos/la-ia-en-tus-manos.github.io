@@ -353,7 +353,7 @@ function pintarMision(id) {
   if (m.imagen) app.append(seccionImagen(m.imagen, m.color));
 
   if (m.prompts && m.prompts.length) {
-    const caja = el('div', { class: 'tarjeta' }, el('h2', {}, m.prompts.length > 1 ? 'Tus prompts' : 'Tu prompt'), el('p', { class: 'apagado' }, estado.alumno.modo === 'ambos' ? 'Léelo en el portátil y díctaselo a Gemini en el móvil, o hazle una foto.' : 'Toca «Copiar» y pégalo en Gemini.'));
+    const caja = el('div', { class: 'tarjeta' }, el('h2', {}, m.prompts.length > 1 ? 'Tus prompts' : 'Tu prompt'), el('p', { class: 'apagado' }, estado.alumno.modo === 'ambos' ? 'Léelo en el portátil y díctaselo a Gemini con el micrófono del móvil.' : 'Toca «Copiar» y pégalo en Gemini.'));
     m.prompts.forEach((pid) => {
       if (pid === 'M3-B' && k.prompts['M3-B_piezas']) {
         caja.append(el('h3', { style: 'margin-top:14px' }, 'M3-B · el prompt bueno, en sus cinco piezas'));
