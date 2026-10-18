@@ -28,7 +28,7 @@ async function iniciar() {
   if (!clave) return pintarAcceso();
   cargarInicio(app);
   try { estado = await get('p_estado', { k: clave }); } catch (e) {
-    if (e.codigo === 401) { clave = ''; sessionStorage.removeItem('profe_clave'); return pintarAcceso(e.message); }
+    if (e.codigo === 401 || e.codigo === 429) { clave = ''; sessionStorage.removeItem('profe_clave'); return pintarAcceso(e.message); }
     return errorPantalla(app, e.message, iniciar);
   }
   pintar();
@@ -45,7 +45,10 @@ function pintarAcceso(error) {
 }
 
 async function recargar(silencioso = true) {
-  try { estado = await get('p_estado', { k: clave }); if (!silencioso) pintar(); } catch (e) { toast(e.message, 'error'); }
+  try { estado = await get('p_estado', { k: clave }); if (!silencioso) pintar(); } catch (e) {
+    if (e.codigo === 401 || e.codigo === 429) { clave = ''; sessionStorage.removeItem('profe_clave'); return pintarAcceso(e.message); }
+    toast(e.message, 'error');
+  }
 }
 
 function pintar() {
@@ -111,7 +114,11 @@ function pintarVivo() {
     try {
       const v = await get('p_vivo', { k: clave });
       pintarTablaVivo(caja, v);
-    } catch (e) { toast(e.message, 'error'); }
+    } catch (e) {
+      // Con clave mala o bloqueo, parar de insistir: cada intento fallido cuenta para el límite del servidor.
+      if (e.codigo === 401 || e.codigo === 429) { if (vivoTimer) { vivoTimer.terminate(); vivoTimer = null; } clave = ''; sessionStorage.removeItem('profe_clave'); return pintarAcceso(e.message); }
+      toast(e.message, 'error');
+    }
   };
   refrescar();
   // Un worker sigue contando aunque la pestaña esté detrás del PowerPoint; un setInterval normal se frena.
