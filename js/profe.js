@@ -1,6 +1,7 @@
 import { get, post } from './api.js';
 import { REFRESCO_VIVO_S } from './config.js';
 import { el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, descargarBlob, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, haceCuanto, fechaHora, NOMBRE_MODO } from './ui.js';
+import { VERSION_APP } from './version.js';
 
 const app = document.getElementById('app');
 let clave = sessionStorage.getItem('profe_clave') || '';
@@ -94,6 +95,10 @@ function pintarInicio() {
     el('p', { class: 'sub' }, 'Hasta «Taller en curso» los alumnos no reciben su caso. En «Terminado» solo queda el cierre.'),
     el('div', { class: 'botones' }, selector, el('button', { class: 'boton', onclick: () => guardarConfig({ estado: selector.value }) }, 'Cambiar estado'))));
 
+  const v = estado.version || {};
+  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Versiones en marcha'),
+    el('p', {}, el('strong', {}, 'Backend (Apps Script): '), `${v.version || '?'} · ${v.fecha || 'fecha desconocida'}`, v.commit ? ` · commit ${v.commit}` : '', v.descripcion ? el('span', { class: 'apagado' }, ` · ${v.descripcion}`) : null),
+    el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`)));
   const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html`;
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enlace de inscripción'), el('p', {}, el('a', { href: enlace, target: '_blank' }, enlace)),
     el('button', { class: 'boton secundario peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar')));
