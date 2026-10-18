@@ -69,7 +69,17 @@ async function iniciar() {
       if (d.idioma === 'pt-BR') d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: '{nombre} concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
       return pintar(d);
     }
+    // La clave del profesor llega en el fragmento (#k=…) desde el panel; se guarda en la sesión y se quita de la barra.
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    if (hash.get('k')) { sessionStorage.setItem('profe_clave', hash.get('k')); history.replaceState(null, '', location.pathname + location.search); }
     const k = sessionStorage.getItem('profe_clave') || '';
+    if ((params.has('id') || params.has('ids')) && !k) {
+      // Sin clave no se llama al servidor (cada intento fallido cuenta para el bloqueo): se pide aquí.
+      const inp = el('input', { type: 'password', placeholder: 'Clave del profesor' });
+      vaciar(diploma).append(el('form', { class: 'tarjeta', style: 'max-width:420px;margin:40px auto', onsubmit: (e) => { e.preventDefault(); sessionStorage.setItem('profe_clave', inp.value.trim()); location.reload(); } },
+        el('h2', {}, 'Clave del profesor'), el('p', { class: 'sub' }, 'Abre los diplomas desde el panel o escribe aquí la clave.'), el('label', { class: 'campo' }, inp), el('button', { class: 'boton bloque', type: 'submit' }, 'Entrar')));
+      return;
+    }
     if (params.has('id')) return pintar(await get('p_certificado', { k, id: params.get('id') }));
     if (params.has('ids')) {
       // Varios diplomas seguidos, uno por página: para imprimirlos todos de una vez.

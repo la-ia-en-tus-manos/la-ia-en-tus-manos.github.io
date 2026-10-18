@@ -317,7 +317,7 @@ function accionesInscrito(i) {
     el('p', {}, el('small', {}, 'Enlace personal: '), el('a', { href: i.enlace, target: '_blank', style: 'word-break:break-all' }, i.enlace)),
     el('div', { class: 'botones' },
       el('button', { class: 'boton secundario', onclick: () => navigator.clipboard.writeText(i.enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar enlace'),
-      i.estado === 'plaza' ? el('a', { class: 'boton secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma') : null,
+      i.estado === 'plaza' ? el('a', { class: 'boton secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario', onclick: () => accion({ accion: 'reenviar' }, 'Enlace reenviado por correo') }, icono('LuMail'), 'Reenviar enlace') : null,
       i.estado === 'espera' ? el('button', { class: 'boton c-gr', onclick: () => accion({ accion: 'subir' }, 'Ya tiene plaza') }, icono('LuArrowUp'), 'Darle plaza') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario peligro', onclick: () => accion({ accion: 'cancelar' }, 'Plaza cancelada', `¿Cancelar la inscripción de ${i.nombre}?`) }, 'Cancelar inscripción') : null,
@@ -354,7 +354,7 @@ function pintarDiplomas() {
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Diplomas'),
     el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF.'),
     el('div', { class: 'botones' },
-      lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
+      lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
       el('a', { class: 'boton secundario', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra'))));
   if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay alumnos con plaza.'));
   const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, ''))));
@@ -367,7 +367,7 @@ function pintarDiplomas() {
       el('td', {}, `${i.misiones.length}`),
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
-      el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
+      el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
   tabla.append(cuerpo);
   app.append(el('div', { class: 'tabla-scroll tarjeta' }, tabla));
