@@ -98,7 +98,8 @@ function pintarInicio() {
   const v = estado.version || {};
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Versiones en marcha'),
     el('p', {}, el('strong', {}, 'Backend (Apps Script): '), `${v.version || '?'} · ${v.fecha || 'fecha desconocida'}`, v.commit ? ` · commit ${v.commit}` : '', v.descripcion ? el('span', { class: 'apagado' }, ` · ${v.descripcion}`) : null),
-    el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`)));
+    el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`),
+    el('p', {}, el('strong', {}, 'Edición actual: '), cfg.taller_id, el('span', { class: 'apagado' }, ' · inscritos por edición: ', Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno'))));
   const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html`;
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enlace de inscripción'), el('p', {}, el('a', { href: enlace, target: '_blank' }, enlace)),
     el('button', { class: 'boton secundario peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar')));
@@ -290,7 +291,7 @@ function pintarInscritos() {
     const color = i.estado === 'plaza' ? 'gr' : i.estado === 'espera' ? 'ye' : 'rd';
     cuerpo.append(el('tr', {},
       el('td', {}, el('strong', {}, i.numero || '—')),
-      el('td', {}, el('strong', {}, i.nombre), el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
+      el('td', {}, el('strong', {}, i.nombre), i.veterano ? el('span', { class: 'chip c-ye', style: 'margin-left:6px' }, 'repite') : null, el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
       el('td', {}, el('small', {}, i.correo, i.telefono ? [el('br'), i.telefono] : null)),
       el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma))),
       el('td', {}, i.estado === 'plaza' ? [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${Math.round(100 * i.previas / Math.max(1, i.previas_total))}%` })), el('small', {}, `${i.previas} de ${i.previas_total}`)] : ''),
@@ -422,7 +423,7 @@ async function pintarSoluciones() {
 function pintarDatos() {
   const para = el('input', { type: 'email', placeholder: 'tu@correo.es' });
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar el envío de correo'), el('div', { class: 'botones' }, para, el('button', { class: 'boton secundario', onclick: async () => { try { const r = await post('p_prueba_correo', { k: clave, para: para.value }); toast(r.enviado ? 'Correo enviado' : 'No se pudo enviar (¿sin cuota?)', r.enviado ? 'ok' : 'error'); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar prueba'))));
-  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, 'Borrar todos los datos'), el('p', { class: 'sub' }, 'Al terminar el taller y entregar los certificados. Borra inscritos, progreso, encuestas y registro. La configuración se mantiene.'),
+  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, 'Borrar los datos de esta edición'), el('p', { class: 'sub' }, `Al terminar el taller y entregar los certificados. Borra inscritos, progreso y encuestas de la edición actual (${estado.config.taller_id}); las ediciones anteriores se conservan para reconocer a quien repite. La configuración se mantiene.`),
     el('button', { class: 'boton peligro', onclick: async () => {
       const texto = window.prompt('Escribe BORRAR para confirmar');
       if (texto === null) return;

@@ -34,6 +34,12 @@ async function cargar(silencioso = false) {
     if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}`);
   } catch (e) {
     if (e.codigo === 404) borrarLocal('taller_token');
+    if (e.codigo === 410) {
+      // Enlace de una edición anterior: el alumno tiene que inscribirse en la nueva.
+      borrarLocal('taller_token');
+      vaciar(app).append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, t('otra_edicion')), el('p', { class: 'sub' }, e.message), el('a', { class: 'boton', href: 'index.html' }, t('ir_inscripcion'))));
+      return;
+    }
     return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') });
   }
   // El idioma manda desde el servidor: es el que eligió al inscribirse (o cambió después).
