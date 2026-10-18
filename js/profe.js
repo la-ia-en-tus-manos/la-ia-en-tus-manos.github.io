@@ -125,7 +125,8 @@ async function activarAvisos() {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); } catch (e) { /* sin sonido */ }
   const permiso = await Notification.requestPermission();
   if (permiso === 'granted') { toast('Avisos activados: sonarán aunque el navegador esté detrás'); pitido(); }
-  else toast('Sin permiso para notificaciones. Actívalo en el candado de la barra de direcciones', 'error', 5000);
+  else if (permiso === 'denied') toast('El navegador tiene BLOQUEADAS las notificaciones para esta web. Pulsa el candado junto a la dirección → Notificaciones → Permitir, y recarga la página', 'error', 9000);
+  else toast('El aviso de permiso no se ha respondido. Si ves una campana tachada en la barra de direcciones, púlsala y elige Permitir', 'error', 9000);
   pintar();
 }
 
