@@ -17,6 +17,9 @@ export function abrirTapar(blob, zonas, opciones = {}) {
       const mascara = document.createElement('canvas');
       mascara.width = W; mascara.height = H;
       const mctx = mascara.getContext('2d');
+      const original = document.createElement('canvas');
+      original.width = W; original.height = H;
+      original.getContext('2d').drawImage(imagen, 0, 0);
       const trazos = [];
       let trazo = null;
 
@@ -51,13 +54,20 @@ export function abrirTapar(blob, zonas, opciones = {}) {
           if (t.length === 1) { mctx.beginPath(); mctx.arc(t[0].x, t[0].y, W * GROSOR / 2, 0, Math.PI * 2); mctx.fill(); return; }
           mctx.beginPath(); mctx.moveTo(t[0].x, t[0].y); t.slice(1).forEach((p) => mctx.lineTo(p.x, p.y)); mctx.stroke();
         });
+        // Cobertura = fracción de los píxeles de TEXTO de la zona (los oscuros del original) que quedan bajo la pintura.
+        // Así no depende del grosor del rotulador ni del margen de la casilla.
+        const octx = original.getContext('2d');
         const out = {};
         zonas.forEach((z) => {
           const x0 = Math.round(z.x * W), y0 = Math.round(z.y * H), w = Math.max(1, Math.round(z.w * W)), h = Math.max(1, Math.round(z.h * H));
-          const datos = mctx.getImageData(x0, y0, w, h).data;
-          let tapados = 0;
-          for (let i = 3; i < datos.length; i += 4) if (datos[i] > 0) tapados++;
-          out[z.id] = tapados / (w * h);
+          const pintura = mctx.getImageData(x0, y0, w, h).data;
+          const fondo = octx.getImageData(x0, y0, w, h).data;
+          let texto = 0, tapados = 0;
+          for (let i = 0; i < fondo.length; i += 4) {
+            const lum = 0.299 * fondo[i] + 0.587 * fondo[i + 1] + 0.114 * fondo[i + 2];
+            if (lum < 140) { texto++; if (pintura[i + 3] > 0) tapados++; }
+          }
+          out[z.id] = texto ? tapados / texto : 1;
         });
         return out;
       };
