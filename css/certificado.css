@@ -37,9 +37,9 @@ body { overflow-x: auto; }
 .dip-logo { display: flex; align-items: center; gap: 14px; flex: none; }
 .dip-logo .emblema { width: 64px; height: 64px; flex: none; }
 .dip-logo .emblema svg, .dip-logo img { width: 64px; height: 64px; border-radius: 16px; object-fit: contain; display: block; }
-.dip-logo .marca { font-weight: 800; font-size: 20px; line-height: 1.1; white-space: nowrap; }
-.dip-logo .marca span { color: var(--cy); }
-.dip-logo .marca small { display: block; font-weight: 400; font-size: 12px; color: var(--txt3); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; }
+.dip-logo .dip-marca { font-weight: 800; font-size: 20px; line-height: 1.1; white-space: nowrap; }
+.dip-logo .dip-marca span { color: var(--cy); }
+.dip-logo .dip-marca small { display: block; font-weight: 400; font-size: 12px; color: var(--txt3); letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; }
 .dip-numero { text-align: right; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--txt3); }
 .dip-numero b { display: block; font-size: 26px; color: var(--cy); letter-spacing: 0; text-transform: none; }
 

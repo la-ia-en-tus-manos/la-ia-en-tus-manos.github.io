@@ -37,7 +37,7 @@ function pintar(d) {
   vaciar(diploma).append(
     el('div', { class: 'dip-cabecera' },
       el('div', { class: 'dip-logo' }, d.textos.logo_url ? el('img', { src: d.textos.logo_url, alt: '' }) : emblema(),
-        el('div', { class: 'marca' }, t('titulo_1'), el('span', {}, t('titulo_2')), el('small', {}, t('pildora_taller', { n: d.numero_taller, nivel: d.nivel })))),
+        el('div', { class: 'dip-marca' }, t('titulo_1'), el('span', {}, t('titulo_2')), el('small', {}, t('pildora_taller', { n: d.numero_taller, nivel: d.nivel })))),
       el('div', { class: 'dip-numero' }, t('explorador'), el('b', {}, t('numero', { n: d.numero })))),
     el('div', { class: 'dip-centro' },
       el('p', { class: 'dip-titulo' }, d.textos.titulo),
