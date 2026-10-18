@@ -545,7 +545,8 @@ function pintarCierre() {
     el('p', {}, t('resumen_dia', { sellos: estado.progreso.misiones.length, medallas: estado.progreso.medallas.length, jefe: a.jefe ? t('superado') : t('pendiente') }))));
 
   if (estado.encuesta_hecha) {
-    app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, a.nombre_certificado || a.nombre), '.'));
+    app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, a.nombre_certificado || a.nombre), '.',
+      el('div', { class: 'botones', style: 'margin:12px 0 0' }, el('a', { class: 'boton c-ye', href: `certificado.html?t=${encodeURIComponent(token)}`, target: '_blank', rel: 'noopener' }, icono('LuAward'), t('ver_diploma')))));
   } else {
     app.append(formularioCierre());
   }

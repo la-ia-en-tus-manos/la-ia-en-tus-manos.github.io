@@ -84,7 +84,9 @@ const D = {
     gemini_sin_cuenta_1: 'Si no tienes cuenta de Google: ', gemini_sin_cuenta_2: 'créala aquí', gemini_sin_cuenta_3: '. Te pedirá nombre, una dirección de correo nueva, una contraseña y tu número de móvil para enviarte un código.',
     gemini_con_cuenta_1: 'Si ya tienes cuenta (Gmail): entra en ', gemini_con_cuenta_2: '. También lo tienes dentro de Gmail: pulsa el icono de los nueve puntitos (arriba a la derecha) y elige Gemini.',
     gemini_app_1: 'En el móvil: instala la app Gemini desde ', gemini_app_android: 'Google Play', gemini_app_o: ' (Android) o la ', gemini_app_ios: 'App Store', gemini_app_2: ' (iPhone) y entra con tu cuenta.',
-    abrir_gemini: 'Abrir Gemini', crear_cuenta: 'Crear cuenta de Google', otra_edicion: 'Este enlace es de otro taller'
+    abrir_gemini: 'Abrir Gemini', crear_cuenta: 'Crear cuenta de Google', otra_edicion: 'Este enlace es de otro taller',
+    dip_conseguida: 'conseguida', dip_pendiente: 'pendiente', dip_resumen: '{medallas} de {total} medallas · {misiones} de {total_misiones} misiones', dip_jefe: 'jefe final superado',
+    dip_imprimir: 'Imprimir o guardar en PDF', dip_demo: 'Muestra con datos inventados', ver_diploma: 'Ver mi diploma'
   },
   'pt-BR': {
     cargando: 'Carregando…', reintentar: 'Tentar de novo', algo_mal: 'Algo deu errado. ', cerrar: 'Fechar', guardar: 'Salvar', cancelar: 'Cancelar',
@@ -158,7 +160,9 @@ const D = {
     gemini_sin_cuenta_1: 'Se você não tem conta do Google: ', gemini_sin_cuenta_2: 'crie aqui', gemini_sin_cuenta_3: '. Vai pedir nome, um endereço de e-mail novo, uma senha e seu número de celular para enviar um código.',
     gemini_con_cuenta_1: 'Se você já tem conta (Gmail): entre em ', gemini_con_cuenta_2: '. Também está dentro do Gmail: toque no ícone dos nove pontinhos (no canto superior direito) e escolha Gemini.',
     gemini_app_1: 'No celular: instale o app Gemini pela ', gemini_app_android: 'Google Play', gemini_app_o: ' (Android) ou pela ', gemini_app_ios: 'App Store', gemini_app_2: ' (iPhone) e entre com sua conta.',
-    abrir_gemini: 'Abrir o Gemini', crear_cuenta: 'Criar conta do Google', otra_edicion: 'Este link é de outra oficina'
+    abrir_gemini: 'Abrir o Gemini', crear_cuenta: 'Criar conta do Google', otra_edicion: 'Este link é de outra oficina',
+    dip_conseguida: 'conquistada', dip_pendiente: 'pendente', dip_resumen: '{medallas} de {total} medalhas · {misiones} de {total_misiones} missões', dip_jefe: 'chefe final superado',
+    dip_imprimir: 'Imprimir ou salvar em PDF', dip_demo: 'Amostra com dados inventados', ver_diploma: 'Ver meu diploma'
   }
 };
 

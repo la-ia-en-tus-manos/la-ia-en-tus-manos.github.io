@@ -24,7 +24,11 @@ const ETIQUETA_CONFIG = {
   url_app: ['Dirección pública de la app (para los enlaces de los correos)', 'url'],
   mensaje_espera_pt: ['Mensaje en la pantalla de espera · en portugués (vacío = se usa el español)', 'textarea'],
   pista_caso_pt: ['Pista del caso bloqueado · en portugués', 'textarea'],
-  retencion_texto_pt: ['Texto sobre los datos · en portugués', 'textarea']
+  retencion_texto_pt: ['Texto sobre los datos · en portugués', 'textarea'],
+  certificado_titulo: ['Diploma · título', 'text'], certificado_texto: ['Diploma · texto (vale {nombre}, {taller}, {numero_taller}, {nivel}, {fecha})', 'textarea'],
+  certificado_firmante: ['Diploma · quien firma', 'text'], certificado_firmante_cargo: ['Diploma · cargo de quien firma', 'text'], certificado_lugar: ['Diploma · lugar', 'text'],
+  certificado_logo_url: ['Diploma · logo (dirección de una imagen; vacío = emblema de la app)', 'url'],
+  certificado_titulo_pt: ['Diploma · título en portugués', 'text'], certificado_texto_pt: ['Diploma · texto en portugués', 'textarea'], certificado_firmante_cargo_pt: ['Diploma · cargo en portugués', 'text']
 };
 const NOMBRE_IDIOMA = { es: 'ES', 'pt-BR': 'PT-BR' };
 const NOMBRE_ESTADO = { borrador: 'Borrador', inscripcion_abierta: 'Inscripción abierta', inscripcion_cerrada: 'Inscripción cerrada', taller_en_curso: 'Taller en curso', terminado: 'Terminado' };
@@ -312,6 +316,7 @@ function accionesInscrito(i) {
     el('p', {}, el('small', {}, 'Enlace personal: '), el('a', { href: i.enlace, target: '_blank', style: 'word-break:break-all' }, i.enlace)),
     el('div', { class: 'botones' },
       el('button', { class: 'boton secundario', onclick: () => navigator.clipboard.writeText(i.enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar enlace'),
+      i.estado === 'plaza' ? el('a', { class: 'boton secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario', onclick: () => accion({ accion: 'reenviar' }, 'Enlace reenviado por correo') }, icono('LuMail'), 'Reenviar enlace') : null,
       i.estado === 'espera' ? el('button', { class: 'boton c-gr', onclick: () => accion({ accion: 'subir' }, 'Ya tiene plaza') }, icono('LuArrowUp'), 'Darle plaza') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario peligro', onclick: () => accion({ accion: 'cancelar' }, 'Plaza cancelada', `¿Cancelar la inscripción de ${i.nombre}?`) }, 'Cancelar inscripción') : null,
@@ -357,6 +362,7 @@ function pintarConfig() {
   const taller = el('select', { name: 'taller_id' }, ...estado.talleres.map((t) => el('option', { value: t, selected: t === cfg.taller_id }, t)));
   campos.taller_id = taller;
   f.append(el('label', { class: 'campo' }, el('span', {}, 'Contenido (kits y misiones)'), taller, el('span', { class: 'ayuda' }, `Hay ${estado.contenido.kits_total} kits en el contenido actual. Para el Taller 2 se añadirá otra carpeta en data/.`)));
+  f.append(el('div', { class: 'botones' }, el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra del diploma'), el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1&idioma=pt-BR', target: '_blank' }, icono('LuAward'), 'Muestra en portugués')));
   f.append(el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSave'), 'Guardar configuración'));
   f.addEventListener('submit', (e) => {
     e.preventDefault();
