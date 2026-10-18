@@ -420,11 +420,12 @@ function seccionImagen(tipo, color) {
   const mostrar = (blob, tapada) => {
     const url = URL.createObjectURL(blob);
     const img = el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], onclick: () => modal(el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], style: 'width:100%;border-radius:12px' }), { ancho: true }) });
-    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? 'Esta es la versión con tus datos tapados: es la que se envía y se descarga.' : 'Toca la imagen para verla a pantalla completa.'));
+    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? 'Esta es tu versión retocada: es la que se envía y se descarga.' : 'Toca la imagen para verla a pantalla completa.'));
     vaciar(botones);
     const archivo = new File([blob], nombre, { type: 'image/png' });
     if (zonas.length) {
-      botones.append(el('button', { class: `boton c-ye ${tapada ? 'secundario' : ''}`, onclick: () => tapar(blob) }, icono('LuEyeOff'), tapada ? 'Volver a tapar' : 'Tapar mis datos'));
+      // Discreto a propósito: cómo se gana la medalla Guardián no se explica.
+      botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPencil'), tapada ? 'Retocar de nuevo' : 'Retocar'));
     }
     if (puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
       botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
@@ -438,7 +439,7 @@ function seccionImagen(tipo, color) {
 
   const tapar = async (blobActual) => {
     const original = imagenesCache[tipo];
-    const r = await abrirTapar(original, zonas, { titulo: 'Tapa tus datos antes de enviarlos' });
+    const r = await abrirTapar(original, zonas, { titulo: 'Retocar la imagen' });
     if (!r) return;
     imagenesCache[`${tipo}_tapada`] = r.blob;
     mostrar(r.blob, true);
@@ -446,7 +447,7 @@ function seccionImagen(tipo, color) {
     try {
       const res = await post('guardian', { t: token, cobertura: r.cobertura });
       if (res.ganada) medallaGanada(res.medalla, res.progreso);
-      else toast(`Todavía se ve: ${res.faltan.join(', ')}. Vuelve a tapar`, 'error', 4000);
+      // Si no se ha ganado, silencio: avisar de lo que falta desvelaría la medalla.
     } catch (e) { toast(e.message, 'error'); }
   };
 

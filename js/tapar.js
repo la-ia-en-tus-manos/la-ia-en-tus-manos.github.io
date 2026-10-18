@@ -64,17 +64,17 @@ export function abrirTapar(blob, zonas, opciones = {}) {
 
       const fondo = el('div', { class: 'modal-fondo' });
       const caja = el('div', { class: 'modal ancho', role: 'dialog', 'aria-modal': 'true' });
-      const estado = el('p', { class: 'apagado' }, 'Pasa el dedo o el ratón por encima de los datos que no quieres enseñar a Gemini.');
+      const estado = el('p', { class: 'apagado' }, 'Pinta con el dedo o el ratón sobre la imagen, como con un rotulador. Lo que pintes quedará así al enviarla.');
       const cerrar = (resultado) => { fondo.remove(); URL.revokeObjectURL(imagen.src); resolver(resultado); };
       caja.append(
-        el('h2', {}, opciones.titulo || 'Tapar mis datos'),
+        el('h2', {}, opciones.titulo || 'Retocar la imagen'),
         estado,
         lienzo,
         el('div', { class: 'botones', style: 'margin-top:14px' },
           el('button', { class: 'boton fantasma', onclick: () => { trazos.pop(); redibujar(); } }, icono('LuUndo2'), 'Deshacer'),
           el('button', { class: 'boton fantasma', onclick: () => { trazos.length = 0; redibujar(); } }, icono('LuEraser'), 'Borrar todo'),
           el('button', { class: 'boton c-gr', style: 'margin-left:auto', onclick: () => {
-            if (!trazos.length) { toast('Todavía no has tapado nada', 'error'); return; }
+            if (!trazos.length) { toast('No has pintado nada todavía', 'error'); return; }
             lienzo.toBlob((b) => cerrar({ blob: b, cobertura: cobertura() }), 'image/png');
           } }, icono('LuCheck'), 'Listo'),
           el('button', { class: 'boton fantasma bloque', onclick: () => cerrar(null) }, 'Cancelar')
