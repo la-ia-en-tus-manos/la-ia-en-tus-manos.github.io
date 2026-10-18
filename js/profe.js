@@ -120,6 +120,48 @@ function pintarVivo() {
 
 function avisosActivos() { return 'Notification' in window && Notification.permission === 'granted'; }
 
+/* Ventana flotante siempre encima (Document Picture-in-Picture): no necesita permisos y se ve sobre el PowerPoint. */
+let flotante = null;
+function hayFlotante() { return !!(flotante && !flotante.closed); }
+function puedeFlotar() { return 'documentPictureInPicture' in window; }
+
+async function abrirFlotante() {
+  if (!puedeFlotar()) { toast('Este navegador no admite la ventana flotante (hace falta Edge o Chrome actualizados)', 'error', 6000); return; }
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); } catch (e) { /* sin sonido */ }
+  try {
+    flotante = await documentPictureInPicture.requestWindow({ width: 380, height: 240 });
+  } catch (e) { toast('No se ha podido abrir la ventana flotante: ' + e.message, 'error', 6000); return; }
+  const d = flotante.document;
+  d.documentElement.lang = 'es';
+  const estilo = d.createElement('style');
+  estilo.textContent = `
+    body { margin: 0; font-family: Inter, 'Segoe UI', system-ui, sans-serif; background: #0d1230; color: #fff; padding: 14px; min-height: 100vh; box-sizing: border-box; }
+    body.alerta { background: #b3261e; animation: parpadeo 1s steps(2) infinite; }
+    @keyframes parpadeo { 50% { background: #e5484d; } }
+    h1 { font-size: 15px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px; opacity: .85; }
+    .quien { font-size: 26px; font-weight: 800; line-height: 1.2; margin: 6px 0; }
+    .tranquilo { font-size: 22px; font-weight: 700; color: #8EE04E; }
+    .pie { font-size: 12px; opacity: .7; margin-top: 10px; }`;
+  d.head.append(estilo);
+  flotante.addEventListener('pagehide', () => { flotante = null; const b = app.querySelector('[data-flotante]'); if (b) b.textContent = 'Abrir ventana flotante'; });
+  pintarFlotante(ultimoVivo);
+  pintar();
+}
+
+let ultimoVivo = null;
+function pintarFlotante(v) {
+  if (!hayFlotante()) return;
+  const d = flotante.document;
+  const ayudas = v ? v.alumnos.filter((a) => a.ayuda) : [];
+  d.body.className = ayudas.length ? 'alerta' : '';
+  d.body.innerHTML = '';
+  d.body.append(crearEn(d, 'h1', '', ayudas.length ? `¡AYUDA! · ${ayudas.length}` : 'Taller en vivo'));
+  if (ayudas.length) ayudas.forEach((a) => d.body.append(crearEn(d, 'div', 'quien', `n.º ${a.numero} · ${a.nombre}`)));
+  else d.body.append(crearEn(d, 'div', 'tranquilo', 'Todo tranquilo'));
+  d.body.append(crearEn(d, 'div', 'pie', v ? `Actualizado ${fechaHora(v.ts)} · ${v.alumnos.length} alumnos` : 'Esperando datos…'));
+}
+function crearEn(d, tag, clase, texto) { const n = d.createElement(tag); n.className = clase; n.textContent = texto; return n; }
+
 async function activarAvisos() {
   if (!('Notification' in window)) { toast('Este navegador no admite notificaciones', 'error'); return; }
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); } catch (e) { /* sin sonido */ }
@@ -162,11 +204,15 @@ function pintarTablaVivo(caja, v) {
   const nuevas = ayudas.filter((a) => !ayudasVistas.has(a.id));
   ayudasVistas = new Set(ayudas.map((a) => a.id));
   if (nuevas.length) avisarAyuda(nuevas, ayudas.length);
+  ultimoVivo = v;
+  pintarFlotante(v);
   document.title = ayudas.length ? `(${ayudas.length}) ¡AYUDA! · ${TITULO_BASE}` : TITULO_BASE;
   caja.append(el('p', { class: 'apagado' }, `Actualizado ${fechaHora(v.ts)} · se refresca cada ${REFRESCO_VIVO_S} s · ${v.alumnos.length} alumnos con plaza`));
-  caja.append(avisosActivos()
-    ? el('p', { class: 'apagado' }, icono('LuBellRing'), ' Avisos de ayuda activados: notificación y sonido aunque el navegador esté detrás.')
-    : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Activa los avisos de ayuda '), 'para recibir una notificación y un sonido aunque estés con el PowerPoint delante. ', el('button', { class: 'boton peque', onclick: activarAvisos }, icono('LuBell'), 'Activar avisos')));
+  caja.append(el('div', { class: `aviso ${avisosActivos() || hayFlotante() ? 'ok' : 'atencion'}` },
+    el('strong', {}, 'Avisos de ayuda. '), 'Para enterarte con el PowerPoint delante: la ventana flotante se queda siempre encima y no necesita permisos; la notificación de Windows sí los necesita.',
+    el('div', { class: 'botones', style: 'margin:10px 0 0' },
+      puedeFlotar() ? el('button', { class: `boton peque ${hayFlotante() ? 'secundario' : ''}`, dataset: { flotante: '1' }, onclick: () => { if (hayFlotante()) flotante.close(); else abrirFlotante(); } }, icono('LuPictureInPicture2'), hayFlotante() ? 'Cerrar ventana flotante' : 'Abrir ventana flotante') : null,
+      avisosActivos() ? el('span', { class: 'chip c-gr', style: 'align-self:center' }, 'Notificaciones activadas') : el('button', { class: 'boton peque secundario', onclick: activarAvisos }, icono('LuBell'), 'Activar notificaciones'))));
   if (ayudas.length) caja.append(el('div', { class: 'aviso error' }, icono('LuHand'), ' ', el('strong', {}, `${ayudas.length} necesita${ayudas.length > 1 ? 'n' : ''} ayuda: `), ayudas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ')));
   if (v.estado !== 'taller_en_curso') caja.append(el('div', { class: 'aviso atencion' }, 'El taller no está en curso: los alumnos aún no ven su caso.'));
 
