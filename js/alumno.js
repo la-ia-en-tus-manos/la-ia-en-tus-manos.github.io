@@ -4,6 +4,7 @@ import {
   el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, copiar, b64aBlob, descargarBlob, puedeCompartirArchivos,
   cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, NOMBRE_MODO, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
 } from './ui.js';
+import { abrirTapar, celebrarMedalla } from './tapar.js';
 
 const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -298,17 +299,22 @@ function seccionMedallas() {
     if (!palabra) return;
     try {
       const r = await post('medalla', { t: token, palabra });
-      estado.progreso = r.progreso;
-      estado.contenido.medallas = estado.contenido.medallas.map((m) => (m.id === r.medalla.id ? r.medalla : m));
       input.value = '';
-      pintar(true);
-      const nodo = app.querySelector(`[data-medalla="${r.medalla.id}"]`);
-      if (nodo) nodo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast(`¡Medalla ${r.medalla.nombre} desbloqueada!`);
+      medallaGanada(r.medalla, r.progreso);
     } catch (err) { toast(err.message, 'error'); }
   });
   caja.append(rejilla, form);
   return caja;
+}
+
+function medallaGanada(medalla, progreso) {
+  estado.progreso = progreso;
+  estado.contenido.medallas = estado.contenido.medallas.map((m) => (m.id === medalla.id ? medalla : m));
+  celebrarMedalla(medalla, () => {
+    pintar(true);
+    const nodo = app.querySelector(`[data-medalla="${medalla.id}"]`);
+    if (nodo) nodo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
 function barraAyuda() {
@@ -408,12 +414,18 @@ function seccionImagen(tipo, color) {
   if (tipo === 'documento') caja.append(el('p', { class: 'apagado' }, `${info.emisor.join(' · ')} — ${info.tipo}`));
   if (tipo === 'mensaje') caja.append(el('p', { class: 'apagado' }, `${info.canal} · de ${info.de}`));
 
-  cargarImagen(tipo).then((blob) => {
+  const zonas = tipo === 'documento' ? (k.zonas_guardian || []) : [];
+  const nombre = `kit${estado.alumno.numero}_${tipo}.png`;
+
+  const mostrar = (blob, tapada) => {
     const url = URL.createObjectURL(blob);
     const img = el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], onclick: () => modal(el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], style: 'width:100%;border-radius:12px' }), { ancho: true }) });
-    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, 'Toca la imagen para verla a pantalla completa.'));
-    const nombre = `kit${estado.alumno.numero}_${tipo}.png`;
+    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? 'Esta es la versión con tus datos tapados: es la que se envía y se descarga.' : 'Toca la imagen para verla a pantalla completa.'));
+    vaciar(botones);
     const archivo = new File([blob], nombre, { type: 'image/png' });
+    if (zonas.length) {
+      botones.append(el('button', { class: `boton c-ye ${tapada ? 'secundario' : ''}`, onclick: () => tapar(blob) }, icono('LuEyeOff'), tapada ? 'Volver a tapar' : 'Tapar mis datos'));
+    }
     if (puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
       botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
         try { await navigator.share({ files: [archivo], title: NOMBRE_IMAGEN[tipo] }); } catch (e) { if (e.name !== 'AbortError') toast('No se ha podido compartir. Usa «Descargar imagen»', 'error'); }
@@ -421,6 +433,26 @@ function seccionImagen(tipo, color) {
     }
     botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
     if (estado.alumno.modo === 'movil' && !puedeCompartirArchivos()) botones.append(el('p', { class: 'apagado', style: 'width:100%' }, 'Descárgala y súbela a Gemini con el botón +.'));
+    pintarIconos(caja);
+  };
+
+  const tapar = async (blobActual) => {
+    const original = imagenesCache[tipo];
+    const r = await abrirTapar(original, zonas, { titulo: 'Tapa tus datos antes de enviarlos' });
+    if (!r) return;
+    imagenesCache[`${tipo}_tapada`] = r.blob;
+    mostrar(r.blob, true);
+    if (estado.progreso.medallas.includes('guardian')) return;
+    try {
+      const res = await post('guardian', { t: token, cobertura: r.cobertura });
+      if (res.ganada) medallaGanada(res.medalla, res.progreso);
+      else toast(`Todavía se ve: ${res.faltan.join(', ')}. Vuelve a tapar`, 'error', 4000);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  cargarImagen(tipo).then(() => {
+    const tapada = imagenesCache[`${tipo}_tapada`];
+    mostrar(tapada || imagenesCache[tipo], !!tapada);
   }).catch((e) => { vaciar(marco).append(el('div', { class: 'aviso error' }, e.message)); });
   return caja;
 }
