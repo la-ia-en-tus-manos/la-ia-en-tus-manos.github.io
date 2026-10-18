@@ -58,10 +58,12 @@ export function modal(contenido, opciones = {}) {
   return { cerrar, caja };
 }
 
-export async function copiar(texto) {
+export async function copiar(texto, mensajes = {}) {
+  const okMsg = mensajes.ok || 'Copiado. Ahora pégalo en Gemini';
+  const errMsg = mensajes.error || 'No se ha podido copiar. Selecciona el texto y cópialo';
   try {
     await navigator.clipboard.writeText(texto);
-    toast('Copiado. Ahora pégalo en Gemini');
+    toast(okMsg);
     return true;
   } catch (e) {
     const ta = el('textarea', { style: 'position:fixed;left:-9999px' }, texto);
@@ -69,7 +71,7 @@ export async function copiar(texto) {
     ta.select();
     const ok = document.execCommand && document.execCommand('copy');
     ta.remove();
-    toast(ok ? 'Copiado. Ahora pégalo en Gemini' : 'No se ha podido copiar. Selecciona el texto y cópialo', ok ? 'ok' : 'error');
+    toast(ok ? okMsg : errMsg, ok ? 'ok' : 'error');
     return !!ok;
   }
 }
@@ -118,9 +120,9 @@ export function cargarInicio(contenedor, texto = 'Cargando…') {
   vaciar(contenedor).append(el('p', { class: 'sub', style: 'text-align:center;padding:40px 0' }, texto));
 }
 
-export function errorPantalla(contenedor, mensaje, reintentar) {
-  vaciar(contenedor).append(el('div', { class: 'aviso error' }, el('strong', {}, 'Algo no ha ido bien. '), mensaje));
-  if (reintentar) contenedor.append(el('button', { class: 'boton secundario', onclick: reintentar }, 'Volver a intentarlo'));
+export function errorPantalla(contenedor, mensaje, reintentar, textos = {}) {
+  vaciar(contenedor).append(el('div', { class: 'aviso error' }, el('strong', {}, textos.titulo || 'Algo no ha ido bien. '), mensaje));
+  if (reintentar) contenedor.append(el('button', { class: 'boton secundario', onclick: reintentar }, textos.reintentar || 'Volver a intentarlo'));
 }
 
 export function guardarLocal(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) { /* privado */ } }

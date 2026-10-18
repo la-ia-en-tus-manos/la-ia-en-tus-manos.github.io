@@ -20,8 +20,12 @@ const ETIQUETA_CONFIG = {
   whatsapp_url: ['Enlace del grupo de WhatsApp', 'url'],
   responsable_nombre: ['Responsable de los datos (nombre o entidad)', 'text'], responsable_correo: ['Correo de contacto para privacidad', 'email'],
   remitente_nombre: ['Nombre del remitente de los correos', 'text'], retencion_texto: ['Texto sobre cuánto tiempo se guardan los datos', 'textarea'],
-  url_app: ['Dirección pública de la app (para los enlaces de los correos)', 'url']
+  url_app: ['Dirección pública de la app (para los enlaces de los correos)', 'url'],
+  mensaje_espera_pt: ['Mensaje en la pantalla de espera · en portugués (vacío = se usa el español)', 'textarea'],
+  pista_caso_pt: ['Pista del caso bloqueado · en portugués', 'textarea'],
+  retencion_texto_pt: ['Texto sobre los datos · en portugués', 'textarea']
 };
+const NOMBRE_IDIOMA = { es: 'ES', 'pt-BR': 'PT-BR' };
 const NOMBRE_ESTADO = { borrador: 'Borrador', inscripcion_abierta: 'Inscripción abierta', inscripcion_cerrada: 'Inscripción cerrada', taller_en_curso: 'Taller en curso', terminado: 'Terminado' };
 
 async function iniciar() {
@@ -229,7 +233,7 @@ function pintarTablaVivo(caja, v) {
   v.alumnos.forEach((a) => {
     const fila = el('tr', { class: a.ayuda ? 'ayuda' : '' },
       el('td', {}, el('strong', {}, a.numero)),
-      el('td', {}, el('strong', {}, a.nombre), el('br'), el('small', { class: 'apagado' }, NOMBRE_MODO[a.modo], a.ayuda ? ' · ¡AYUDA!' : '')),
+      el('td', {}, el('strong', {}, a.nombre), el('br'), el('small', { class: 'apagado' }, NOMBRE_MODO[a.modo], a.idioma && a.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[a.idioma] || a.idioma}` : '', a.ayuda ? ' · ¡AYUDA!' : '')),
       el('td', {}, el('div', { class: 'sellos' }, ...misiones.map((m) => el('span', { class: `c-${m.color} ${a.misiones.includes(m.id) ? 'si' : ''}`, title: m.titulo }, m.id.replace('M', ''))))),
       el('td', {}, el('div', { class: 'sellos' }, ...medallas.map((m) => el('span', { class: `c-${m.color} ${a.medallas.includes(m.id) ? 'si' : ''}`, title: m.nombre }, m.nombre[0])))),
       el('td', {}, a.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
@@ -283,7 +287,7 @@ function pintarInscritos() {
       el('td', {}, el('strong', {}, i.numero || '—')),
       el('td', {}, el('strong', {}, i.nombre), el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
       el('td', {}, el('small', {}, i.correo, i.telefono ? [el('br'), i.telefono] : null)),
-      el('td', {}, el('small', {}, NOMBRE_MODO[i.modo])),
+      el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma))),
       el('td', {}, i.estado === 'plaza' ? [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${Math.round(100 * i.previas / Math.max(1, i.previas_total))}%` })), el('small', {}, `${i.previas} de ${i.previas_total}`)] : ''),
       el('td', {}, el('span', { class: `chip c-${color}` }, i.estado)),
       el('td', {}, el('button', { class: 'boton peque secundario', onclick: () => accionesInscrito(i) }, 'Acciones'))));
@@ -307,18 +311,25 @@ function accionesInscrito(i) {
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario peligro', onclick: () => accion({ accion: 'cancelar' }, 'Plaza cancelada', `¿Cancelar la inscripción de ${i.nombre}?`) }, 'Cancelar inscripción') : null,
       el('button', { class: 'boton peligro', onclick: () => accion({ accion: 'borrar' }, 'Datos borrados', `¿Borrar todos los datos de ${i.nombre}? No se puede deshacer.`) }, icono('LuTrash2'), 'Borrar sus datos')),
     el('h3', { style: 'margin-top:14px' }, 'Modo'),
-    el('div', { class: 'botones' }, ...['ambos', 'portatil', 'movil'].map((m) => el('button', { class: `boton peque ${i.modo === m ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'modo', modo: m }, 'Modo cambiado') }, NOMBRE_MODO[m])))
+    el('div', { class: 'botones' }, ...['ambos', 'portatil', 'movil'].map((m) => el('button', { class: `boton peque ${i.modo === m ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'modo', modo: m }, 'Modo cambiado') }, NOMBRE_MODO[m]))),
+    el('h3', { style: 'margin-top:14px' }, 'Idioma'),
+    el('div', { class: 'botones' }, ...(estado.contenido.idiomas || ['es']).map((id) => el('button', { class: `boton peque ${i.idioma === id ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'idioma', idioma: id }, 'Idioma cambiado') }, NOMBRE_IDIOMA[id] || id)))
   ]);
 }
 
 function avisarTodos() {
   const asunto = el('input', { type: 'text', placeholder: 'Asunto', value: estado.config.fecha ? 'Ya tenemos fecha para el taller' : '' });
   const cuerpo = el('textarea', { placeholder: 'Mensaje. Debajo irán la fecha, el lugar y el enlace personal de cada uno.' });
+  const hayPt = estado.inscritos.some((i) => i.idioma === 'pt-BR' && i.estado !== 'cancelado');
+  const asuntoPt = el('input', { type: 'text', placeholder: 'Assunto (para os alunos em português)' });
+  const cuerpoPt = el('textarea', { placeholder: 'Mensagem em português. Si lo dejas vacío, recibirán la versión en español.' });
   const destino = el('select', {}, el('option', { value: 'plaza' }, `Con plaza (${estado.ocupacion.plaza})`), el('option', { value: 'espera' }, `En espera (${estado.ocupacion.espera})`), el('option', { value: 'todos' }, `Todos menos cancelados (${estado.ocupacion.plaza + estado.ocupacion.espera})`));
   const { cerrar } = modal([el('h2', {}, 'Avisar por correo'), el('p', { class: 'apagado' }, `Quedan ${estado.cuota_correo} envíos hoy (límite de Gmail).`),
     el('label', { class: 'campo' }, el('span', {}, 'Destinatarios'), destino), el('label', { class: 'campo' }, el('span', {}, 'Asunto'), asunto), el('label', { class: 'campo' }, el('span', {}, 'Mensaje'), cuerpo),
+    hayPt ? el('label', { class: 'campo' }, el('span', {}, 'Asunto en portugués (hay alumnos en pt-BR)'), asuntoPt) : null,
+    hayPt ? el('label', { class: 'campo' }, el('span', {}, 'Mensaje en portugués'), cuerpoPt) : null,
     el('button', { class: 'boton bloque', onclick: async () => {
-      try { const r = await post('p_aviso', { k: clave, asunto: asunto.value, cuerpo: cuerpo.value, destinatarios: destino.value }); toast(`Enviados ${r.enviados} de ${r.total}`); cerrar(); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
+      try { const r = await post('p_aviso', { k: clave, asunto: asunto.value, cuerpo: cuerpo.value, destinatarios: destino.value, asunto_pt: asuntoPt.value, cuerpo_pt: cuerpoPt.value }); toast(`Enviados ${r.enviados} de ${r.total}`); cerrar(); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
     } }, icono('LuSend'), 'Enviar')]);
 }
 
@@ -392,7 +403,7 @@ async function pintarSoluciones() {
     caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Cómo se ganan las medallas'), ...r.medallas.map((m) => el('p', {}, el('strong', { class: `c-${m.color} acento` }, m.nombre), ': ', Object.entries(m.como_se_gana).map(([k, v]) => `${k === 'todos' ? '' : `[${k.replace('_', ' ')}] `}${v}`).join(' ')))));
     r.kits.forEach((k) => {
       caja.append(el('div', { class: `tarjeta ${k.alumno ? 'tinte' : ''}` },
-        el('div', { style: 'display:flex;justify-content:space-between;gap:10px;align-items:baseline' }, el('h3', {}, `Kit ${k.numero} · ${k.personaje.nombre}`), el('span', { class: 'apagado' }, k.alumno || 'sin asignar')),
+        el('div', { style: 'display:flex;justify-content:space-between;gap:10px;align-items:baseline' }, el('h3', {}, `Kit ${k.numero} · ${k.personaje.nombre}`), el('span', { class: 'apagado' }, k.alumno ? `${k.alumno}${k.idioma && k.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[k.idioma]}` : ''}` : 'sin asignar')),
         el('p', { class: 'apagado' }, `${k.personaje.edad} años · ${k.personaje.oficio} · ${k.personaje.problema}`),
         el('p', {}, el('strong', { class: 'acento' }, 'Guardián debe tapar: '), k.guia.debe_tapar_guardian),
         el('p', {}, el('strong', { class: 'c-rd acento' }, 'M8: '), `${k.mensaje_m8.canal} de ${k.mensaje_m8.de}. ${k.guia.m8_tipo_y_senales}`)));

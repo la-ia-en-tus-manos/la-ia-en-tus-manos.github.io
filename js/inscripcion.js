@@ -1,46 +1,56 @@
 import { get, post } from './api.js';
-import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, NOMBRE_MODO, ICONO_MODO } from './ui.js';
+import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
+import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, ICONO_MODO } from './ui.js';
 
 const app = document.getElementById('app');
 const cargadoEn = Date.now();
+let pub = null;
 
 async function iniciar() {
-  cargarInicio(app);
-  let pub;
+  cargarInicio(app, t('cargando'));
   try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
-  pintar(pub);
+  document.title = `${t('titulo_1')}${t('titulo_2')}`;
+  pintar();
 }
 
-function cabecera(pub) {
+function selectorIdioma() {
+  const disponibles = (pub.idiomas && pub.idiomas.length ? pub.idiomas : ['es']);
+  if (disponibles.length < 2) return null;
+  return el('div', { class: 'botones', style: 'margin:0 0 14px' }, ...disponibles.map((id) =>
+    el('button', { class: `boton peque ${id === idiomaActual() ? '' : 'fantasma'}`, type: 'button', onclick: async () => { setIdioma(id); try { pub = await get('publico'); } catch (e) { /* se queda la anterior */ } pintar(); } }, icono('LuGlobe'), IDIOMAS[id])));
+}
+
+function cabecera() {
   return [
-    pildora(`Taller práctico ${pub.numero_taller} · nivel ${pub.nivel}`),
-    el('h1', {}, 'La IA en ', el('span', { class: 'acento' }, 'tus manos')),
-    el('p', { class: 'sub' }, 'Cuatro horas para aprender haciendo, con Gemini. Sin conocimientos previos, sin teclear y con forma de juego: misiones, sellos y medallas secretas.'),
+    selectorIdioma(),
+    pildora(t('pildora_taller', { n: pub.numero_taller, nivel: pub.nivel })),
+    el('h1', {}, t('titulo_1'), el('span', { class: 'acento' }, t('titulo_2'))),
+    el('p', { class: 'sub' }, t('intro')),
     el('div', { class: 'tarjeta' },
-      el('p', { style: 'margin:0' }, icono('LuCalendar', 'inline'), ' ', el('strong', {}, 'Cuándo: '), pub.fecha_legible || 'fecha por confirmar. Te avisaremos por correo.'),
-      pub.lugar ? el('p', { style: 'margin:8px 0 0' }, el('strong', {}, 'Dónde: '), pub.lugar, pub.direccion ? `, ${pub.direccion}` : '',
-        pub.mapa_url ? [' · ', el('a', { href: pub.mapa_url, target: '_blank', rel: 'noopener' }, 'ver mapa')] : null) : null,
-      el('p', { style: 'margin:8px 0 0' }, el('strong', {}, 'Qué traer: '), 'tu móvil con tu cuenta de Google. Si tienes portátil, mejor con los dos.')
+      el('p', { style: 'margin:0' }, icono('LuCalendar', 'inline'), ' ', el('strong', {}, t('cuando')), pub.fecha_legible || t('fecha_por_confirmar')),
+      pub.lugar ? el('p', { style: 'margin:8px 0 0' }, el('strong', {}, t('donde')), pub.lugar, pub.direccion ? `, ${pub.direccion}` : '',
+        pub.mapa_url ? [' · ', el('a', { href: pub.mapa_url, target: '_blank', rel: 'noopener' }, t('ver_mapa'))] : null) : null,
+      el('p', { style: 'margin:8px 0 0' }, el('strong', {}, t('que_traer')), t('que_traer_txt'))
     )
   ];
 }
 
-function pintar(pub) {
+function pintar() {
   vaciar(app);
-  app.append(...cabecera(pub));
+  app.append(...cabecera().filter(Boolean));
 
   const guardado = leerLocal('taller_token');
   if (guardado && guardado.token) {
     app.append(el('div', { class: 'aviso' },
-      el('p', { style: 'margin:0 0 10px' }, 'Ya tienes una inscripción en este dispositivo.'),
-      el('a', { class: 'boton bloque', href: `alumno.html?t=${encodeURIComponent(guardado.token)}` }, 'Abrir mi enlace personal')
+      el('p', { style: 'margin:0 0 10px' }, t('ya_inscrito_aqui')),
+      el('a', { class: 'boton bloque', href: `alumno.html?t=${encodeURIComponent(guardado.token)}` }, t('abrir_enlace'))
     ));
   }
 
   if (!pub.abierta) {
     app.append(el('div', { class: 'tarjeta tinte' },
-      el('h2', {}, pub.estado === 'borrador' ? 'La inscripción se abrirá pronto' : 'La inscripción está cerrada'),
-      el('p', { class: 'sub' }, pub.estado === 'borrador' ? 'Vuelve a pasar por aquí en unos días.' : 'Si ya estás inscrito, abre el enlace personal que recibiste por correo.')
+      el('h2', {}, pub.estado === 'borrador' ? t('abrira_pronto') : t('cerrada')),
+      el('p', { class: 'sub' }, pub.estado === 'borrador' ? t('vuelve') : t('cerrada_txt'))
     ));
     return pintarIconos(app);
   }
@@ -48,39 +58,40 @@ function pintar(pub) {
   const sinPlaza = pub.plazas_libres === 0;
   const sinEspera = sinPlaza && pub.espera_libre === 0;
   if (sinEspera) {
-    app.append(el('div', { class: 'tarjeta tinte c-ye' }, el('h2', {}, 'Plazas y lista de espera completas'), el('p', { class: 'sub' }, 'Lo sentimos. Si se abre otra edición te lo contaremos por aquí.')));
+    app.append(el('div', { class: 'tarjeta tinte c-ye' }, el('h2', {}, t('completas')), el('p', { class: 'sub' }, t('completas_txt'))));
     return pintarIconos(app);
   }
   if (sinPlaza) {
-    app.append(el('div', { class: 'aviso atencion' }, el('strong', {}, 'Plazas completas. '), `Puedes apuntarte a la lista de espera (quedan ${pub.espera_libre} sitios): si alguien deja su plaza, serás de los primeros en entrar.`));
+    app.append(el('div', { class: 'aviso atencion' }, el('strong', {}, t('plazas_completas')), t('espera_txt', { n: pub.espera_libre })));
   } else {
-    app.append(el('p', { class: 'apagado' }, `Quedan ${pub.plazas_libres} plazas de ${pub.plazas}.`));
+    app.append(el('p', { class: 'apagado' }, t('quedan', { libres: pub.plazas_libres, total: pub.plazas })));
   }
 
-  app.append(formulario(pub, sinPlaza));
+  app.append(formulario(sinPlaza));
   pintarIconos(app);
 }
 
-function formulario(pub, esEspera) {
+function formulario(esEspera) {
   const form = el('form', { class: 'tarjeta', novalidate: true, autocomplete: 'on' });
   const aviso = el('div', { class: 'aviso error oculto', role: 'alert' });
+  const modos = [['movil', 'modo_movil_sub'], ['portatil', 'modo_portatil_sub'], ['ambos', 'modo_ambos_sub']];
   form.append(
-    el('h2', {}, esEspera ? 'Apúntate a la lista de espera' : 'Reserva tu plaza'),
-    el('label', { class: 'campo' }, el('span', {}, 'Nombre y apellidos'), el('input', { type: 'text', name: 'nombre', required: true, autocomplete: 'name', placeholder: 'Tal como quieres que salgan en el certificado' })),
-    el('label', { class: 'campo' }, el('span', {}, 'Correo electrónico'), el('input', { type: 'email', name: 'correo', required: true, autocomplete: 'email', inputmode: 'email', placeholder: 'Ahí te enviaremos tu enlace personal' })),
-    el('label', { class: 'campo' }, el('span', {}, 'Teléfono (opcional)'), el('input', { type: 'tel', name: 'telefono', autocomplete: 'tel', inputmode: 'tel' }), el('span', { class: 'ayuda' }, 'Solo si quieres entrar en el grupo de WhatsApp del taller.')),
+    el('h2', {}, esEspera ? t('apuntate_espera') : t('reserva')),
+    el('label', { class: 'campo' }, el('span', {}, t('nombre')), el('input', { type: 'text', name: 'nombre', required: true, autocomplete: 'name', placeholder: t('nombre_ph') })),
+    el('label', { class: 'campo' }, el('span', {}, t('correo')), el('input', { type: 'email', name: 'correo', required: true, autocomplete: 'email', inputmode: 'email', placeholder: t('correo_ph') })),
+    el('label', { class: 'campo' }, el('span', {}, t('telefono')), el('input', { type: 'tel', name: 'telefono', autocomplete: 'tel', inputmode: 'tel' }), el('span', { class: 'ayuda' }, t('telefono_ayuda'))),
     el('fieldset', { class: 'campo', style: 'border:0;padding:0;margin:0 0 18px' },
-      el('legend', { style: 'font-weight:600;margin-bottom:8px' }, '¿Con qué vendrás?'),
-      el('div', { class: 'opciones tres' }, ...['movil', 'portatil', 'ambos'].map((m, i) =>
-        el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'modo', value: m, checked: i === 0 }), icono(ICONO_MODO[m]), el('span', {}, el('strong', {}, NOMBRE_MODO[m]), el('small', {}, m === 'ambos' ? 'La opción más cómoda' : m === 'movil' ? 'Con la app de Gemini' : 'Con gemini.google.com')))
+      el('legend', { style: 'font-weight:600;margin-bottom:8px' }, t('con_que')),
+      el('div', { class: 'opciones tres' }, ...modos.map(([m, sub], i) =>
+        el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'modo', value: m, checked: i === 0 }), icono(ICONO_MODO[m]), el('span', {}, el('strong', {}, t(`modo_${m}`)), el('small', {}, t(sub))))
       )),
-      el('span', { class: 'ayuda' }, 'Podrás cambiarlo después desde tu enlace personal.')
+      el('span', { class: 'ayuda' }, t('cambiar_despues'))
     ),
-    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'consentimiento', required: true }), el('span', {}, 'Acepto que ', el('strong', {}, pub.responsable_nombre || 'el organizador del taller'), ' guarde estos datos para gestionar mi plaza, el taller y el certificado. ', el('span', { class: 'apagado' }, pub.retencion_texto, pub.responsable_correo ? ` Contacto: ${pub.responsable_correo}.` : ''))),
-    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'avisos' }), el('span', {}, 'Quiero que me avisen de futuros talleres.')),
-    el('div', { class: 'sr', 'aria-hidden': 'true' }, el('label', {}, 'Deja este campo vacío', el('input', { type: 'text', name: 'web', tabindex: '-1', autocomplete: 'off' }))),
+    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'consentimiento', required: true }), el('span', {}, t('consiento_1'), el('strong', {}, pub.responsable_nombre || t('organizador')), t('consiento_2'), el('span', { class: 'apagado' }, pub.retencion_texto, pub.responsable_correo ? t('contacto', { correo: pub.responsable_correo }) : ''))),
+    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'avisos' }), el('span', {}, t('avisos'))),
+    el('div', { class: 'sr', 'aria-hidden': 'true' }, el('label', {}, t('campo_trampa'), el('input', { type: 'text', name: 'web', tabindex: '-1', autocomplete: 'off' }))),
     aviso,
-    el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSend'), esEspera ? 'Apuntarme a la espera' : 'Apuntarme al taller')
+    el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSend'), esEspera ? t('apuntarme_espera') : t('apuntarme'))
   );
 
   form.addEventListener('submit', async (e) => {
@@ -89,15 +100,15 @@ function formulario(pub, esEspera) {
     const d = Object.fromEntries(new FormData(form).entries());
     const boton = form.querySelector('button[type=submit]');
     const nombre = (d.nombre || '').trim();
-    if (nombre.split(/\s+/).length < 2) return mostrarError(aviso, 'Escribe tu nombre y al menos un apellido.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((d.correo || '').trim())) return mostrarError(aviso, 'Revisa el correo: no parece una dirección válida.');
-    if (!d.consentimiento) return mostrarError(aviso, 'Necesitamos tu consentimiento para guardar la inscripción.');
+    if (nombre.split(/\s+/).length < 2) return mostrarError(aviso, t('err_nombre'));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((d.correo || '').trim())) return mostrarError(aviso, t('err_correo'));
+    if (!d.consentimiento) return mostrarError(aviso, t('err_consentimiento'));
     boton.disabled = true;
-    boton.textContent = 'Enviando…';
+    boton.textContent = t('enviando');
     try {
-      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn });
+      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn, idioma: idiomaActual() });
       if (r.repetido) {
-        vaciar(app).append(...cabecera(pub), el('div', { class: 'tarjeta tinte' }, el('h2', {}, 'Ya estabas inscrito'), el('p', { class: 'sub' }, 'Te hemos reenviado tu enlace personal al correo. Si no lo ves, mira en «Correo no deseado».')));
+        vaciar(app).append(...cabecera().filter(Boolean), el('div', { class: 'tarjeta tinte' }, el('h2', {}, t('ya_estabas')), el('p', { class: 'sub' }, t('reenviado'))));
       } else {
         guardarLocal('taller_token', { token: r.token });
         location.href = `alumno.html?t=${encodeURIComponent(r.token)}&nuevo=1`;
@@ -107,7 +118,7 @@ function formulario(pub, esEspera) {
     } catch (err) {
       mostrarError(aviso, err.message);
       boton.disabled = false;
-      boton.textContent = esEspera ? 'Apuntarme a la espera' : 'Apuntarme al taller';
+      boton.textContent = esEspera ? t('apuntarme_espera') : t('apuntarme');
     }
   });
   return form;

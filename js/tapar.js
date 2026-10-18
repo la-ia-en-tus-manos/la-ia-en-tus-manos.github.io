@@ -1,6 +1,7 @@
 // Herramienta «Tapar mis datos»: el alumno pinta encima de los datos sensibles de su documento.
 // Devuelve la imagen tapada y la cobertura de cada zona sensible (0..1) para que el servidor dé la medalla.
 import { el, icono, pintarIconos, toast } from './ui.js';
+import { t } from './i18n.js';
 
 const GROSOR = 0.032; // grosor del pincel, fracción del ancho de la imagen
 
@@ -74,20 +75,20 @@ export function abrirTapar(blob, zonas, opciones = {}) {
 
       const fondo = el('div', { class: 'modal-fondo' });
       const caja = el('div', { class: 'modal ancho', role: 'dialog', 'aria-modal': 'true' });
-      const estado = el('p', { class: 'apagado' }, 'Pinta con el dedo o el ratón sobre la imagen, como con un rotulador. Lo que pintes quedará así al enviarla.');
+      const estado = el('p', { class: 'apagado' }, t('rotulador_txt'));
       const cerrar = (resultado) => { fondo.remove(); URL.revokeObjectURL(imagen.src); resolver(resultado); };
       caja.append(
-        el('h2', {}, opciones.titulo || 'Rotulador'),
+        el('h2', {}, opciones.titulo || t('rotulador')),
         estado,
         lienzo,
         el('div', { class: 'botones', style: 'margin-top:14px' },
-          el('button', { class: 'boton fantasma', onclick: () => { trazos.pop(); redibujar(); } }, icono('LuUndo2'), 'Deshacer'),
-          el('button', { class: 'boton fantasma', onclick: () => { trazos.length = 0; redibujar(); } }, icono('LuEraser'), 'Borrar todo'),
+          el('button', { class: 'boton fantasma', onclick: () => { trazos.pop(); redibujar(); } }, icono('LuUndo2'), t('deshacer')),
+          el('button', { class: 'boton fantasma', onclick: () => { trazos.length = 0; redibujar(); } }, icono('LuEraser'), t('borrar_todo')),
           el('button', { class: 'boton c-gr', style: 'margin-left:auto', onclick: () => {
-            if (!trazos.length) { toast('No has pintado nada todavía', 'error'); return; }
+            if (!trazos.length) { toast(t('nada_pintado'), 'error'); return; }
             lienzo.toBlob((b) => cerrar({ blob: b, cobertura: cobertura() }), 'image/png');
-          } }, icono('LuCheck'), 'Listo'),
-          el('button', { class: 'boton fantasma bloque', onclick: () => cerrar(null) }, 'Cancelar')
+          } }, icono('LuCheck'), t('listo')),
+          el('button', { class: 'boton fantasma bloque', onclick: () => cerrar(null) }, t('cancelar'))
         )
       );
       fondo.append(caja);
@@ -127,11 +128,11 @@ export function celebrarMedalla(medalla, alCerrar) {
   const fondo = el('div', { class: 'modal-fondo' });
   const caja = el('div', { class: `modal c-${medalla.color}`, style: 'text-align:center' });
   caja.append(
-    el('p', { class: 'pildora' }, 'Medalla secreta desbloqueada'),
+    el('p', { class: 'pildora' }, t('medalla_desbloqueada')),
     el('div', { class: 'medalla ganada', style: 'border:0;background:transparent;padding:0' }, el('div', { class: 'circulo', style: 'width:110px;height:110px' }, icono(medalla.icono))),
     el('h2', { style: 'font-size:2rem;margin-top:8px' }, medalla.nombre),
     medalla.premiaba ? el('p', { class: 'sub' }, medalla.premiaba) : null,
-    el('button', { class: 'boton grande bloque', style: 'margin-top:16px', onclick: () => { fondo.remove(); if (alCerrar) alCerrar(); } }, icono('LuPartyPopper'), '¡Genial!')
+    el('button', { class: 'boton grande bloque', style: 'margin-top:16px', onclick: () => { fondo.remove(); if (alCerrar) alCerrar(); } }, icono('LuPartyPopper'), t('genial'))
   );
   caja.querySelector('.circulo svg, .circulo i')?.setAttribute('style', 'width:56px;height:56px');
   fondo.append(caja);

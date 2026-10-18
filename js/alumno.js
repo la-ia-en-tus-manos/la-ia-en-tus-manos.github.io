@@ -1,8 +1,9 @@
 import { get, post } from './api.js';
 import { REFRESCO_ALUMNO_S } from './config.js';
+import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import {
   el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, copiar, b64aBlob, descargarBlob, puedeCompartirArchivos,
-  cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, NOMBRE_MODO, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
+  cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
 } from './ui.js';
 import { abrirTapar, celebrarMedalla } from './tapar.js';
 
@@ -16,23 +17,28 @@ let temporizador = null;
 let cuentaAtrasTimer = null;
 const imagenesCache = {};
 
-const NOMBRE_PIEZAS = [['quien_soy', 'Quién soy', 'bl'], ['que_ha_pasado', 'Qué ha pasado', 'bl'], ['que_quiero', 'Qué quiero', 'vi'], ['reglas', 'Reglas', 'pk'], ['formato', 'Formato', 'or']];
-const NOMBRE_IMAGEN = { documento: 'Tu documento', cartel: 'Tu cartel', mensaje: 'Tu mensaje sospechoso' };
+const PIEZAS = [['quien_soy', 'bl'], ['que_ha_pasado', 'bl'], ['que_quiero', 'vi'], ['reglas', 'pk'], ['formato', 'or']];
+const nombreModo = (m) => t(`modo_${m}`);
+const nombreImagen = (tipo) => t(`img_${tipo}`);
+const txtCopiar = () => ({ ok: t('copiado'), error: t('no_copiado') });
 
 async function cargar(silencioso = false) {
   if (!token) {
-    vaciar(app).append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, 'Falta tu enlace personal'), el('p', { class: 'sub' }, 'Abre el enlace que recibiste por correo al inscribirte. Si no lo encuentras, vuelve a inscribirte con el mismo correo y te lo reenviamos.'), el('a', { class: 'boton', href: 'index.html' }, 'Ir a la inscripción')));
+    vaciar(app).append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, t('falta_enlace')), el('p', { class: 'sub' }, t('falta_enlace_txt')), el('a', { class: 'boton', href: 'index.html' }, t('ir_inscripcion'))));
     return;
   }
-  if (!silencioso) cargarInicio(app);
+  if (!silencioso) cargarInicio(app, t('cargando'));
   try {
     estado = await get('alumno', { t: token });
     guardarLocal('taller_token', { token });
     if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}`);
   } catch (e) {
     if (e.codigo === 404) borrarLocal('taller_token');
-    return errorPantalla(app, e.message, () => cargar());
+    return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') });
   }
+  // El idioma manda desde el servidor: es el que eligió al inscribirse (o cambió después).
+  setIdioma(estado.alumno.idioma);
+  document.title = `${t('titulo_1')}${t('titulo_2')}`;
   pintar();
   programarRefresco();
 }
@@ -45,9 +51,10 @@ function programarRefresco() {
     try {
       const nuevo = await get('alumno', { t: token });
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
-      const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.config, e.encuesta_hecha]);
+      const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha]);
       const cambio = huella(nuevo) !== huella(estado);
       estado = nuevo;
+      setIdioma(estado.alumno.idioma);
       if (cambioFase) { vista = { tipo: 'auto' }; pintar(); }
       else if (!cambio) return;                       // nada nuevo: no se toca lo que el alumno está leyendo
       else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar(true);
@@ -83,8 +90,8 @@ function pintar(conservar = false) {
 function cabeceraAlumno() {
   const a = estado.alumno;
   return el('div', { class: 'cabecera-alumno' },
-    el('div', {}, el('p', { class: 'sub', style: 'margin:0' }, `Hola, ${a.nombre.split(' ')[0]}`), el('h1', { style: 'font-size:1.5rem' }, estado.config.nombre_taller)),
-    el('div', { class: 'numero-explorador', style: 'text-align:right' }, 'Explorador', el('b', {}, `n.º ${a.numero}`))
+    el('div', {}, el('p', { class: 'sub', style: 'margin:0' }, t('hola', { nombre: a.nombre.split(' ')[0] })), el('h1', { style: 'font-size:1.5rem' }, estado.config.nombre_taller)),
+    el('div', { class: 'numero-explorador', style: 'text-align:right' }, t('explorador'), el('b', {}, t('numero', { n: a.numero })))
   );
 }
 
@@ -95,40 +102,41 @@ function pintarPrevio() {
   const cfg = estado.config;
   const a = estado.alumno;
   app.append(cabeceraAlumno());
-  if (params.has('nuevo')) app.append(el('div', { class: 'aviso ok' }, el('strong', {}, '¡Tienes plaza! '), 'Te hemos enviado este enlace por correo. Guárdalo: lo necesitarás el día del taller.'));
+  if (params.has('nuevo')) app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('tienes_plaza')), t('guarda_enlace')));
 
   const fecha = el('div', { class: 'tarjeta tinte' });
   if (cfg.fecha) {
-    fecha.append(pildora('Cuenta atrás'), el('h2', {}, cfg.fecha_legible));
+    fecha.append(pildora(t('cuenta_atras')), el('h2', {}, cfg.fecha_legible));
     const cuenta = el('div', { class: 'cuenta' });
     fecha.append(cuenta);
     const objetivo = new Date(`${cfg.fecha}T${cfg.hora_inicio || '00:00'}:00`);
     const tic = () => {
       const ms = objetivo - Date.now();
-      if (ms <= 0) { vaciar(cuenta).append(el('p', { class: 'grande', style: 'text-align:center;width:100%' }, '¡Es hoy! El profesor abrirá el taller desde la sala.')); return; }
+      if (ms <= 0) { vaciar(cuenta).append(el('p', { class: 'grande', style: 'text-align:center;width:100%' }, t('es_hoy'))); return; }
       const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, s = Math.floor(ms / 1e3) % 60;
-      vaciar(cuenta).append(...[[d, 'días'], [h, 'horas'], [m, 'min'], [s, 'seg']].map(([n, t]) => el('div', {}, el('b', {}, String(n).padStart(2, '0')), el('small', {}, t))));
+      vaciar(cuenta).append(...[[d, t('dias')], [h, t('horas')], [m, t('min')], [s, t('seg')]].map(([n, txt]) => el('div', {}, el('b', {}, String(n).padStart(2, '0')), el('small', {}, txt))));
     };
     tic();
     cuentaAtrasTimer = setInterval(tic, 1000);
-    if (cfg.lugar) fecha.append(el('p', {}, el('strong', {}, 'Dónde: '), cfg.lugar, cfg.direccion ? `, ${cfg.direccion}` : '', cfg.mapa_url ? [' · ', el('a', { href: cfg.mapa_url, target: '_blank', rel: 'noopener' }, 'ver mapa')] : null));
-    fecha.append(el('div', { class: 'botones' }, el('button', { class: 'boton secundario', onclick: descargarIcs }, icono('LuCalendarPlus'), 'Añadir al calendario')));
+    if (cfg.lugar) fecha.append(el('p', {}, el('strong', {}, t('donde')), cfg.lugar, cfg.direccion ? `, ${cfg.direccion}` : '', cfg.mapa_url ? [' · ', el('a', { href: cfg.mapa_url, target: '_blank', rel: 'noopener' }, t('ver_mapa'))] : null));
+    fecha.append(el('div', { class: 'botones' }, el('button', { class: 'boton secundario', onclick: descargarIcs }, icono('LuCalendarPlus'), t('anadir_calendario'))));
   } else {
-    fecha.append(pildora('Fecha'), el('h2', {}, 'Fecha por confirmar'), el('p', { class: 'sub' }, 'Te avisaremos por correo en cuanto la tengamos.'));
+    fecha.append(pildora(t('fecha')), el('h2', {}, t('fecha_por_confirmar_t')), el('p', { class: 'sub' }, t('avisaremos')));
   }
   app.append(fecha);
 
-  if (cfg.mensaje_espera) app.append(el('div', { class: 'aviso c-ye' }, el('strong', {}, 'Mensaje del profesor: '), cfg.mensaje_espera));
+  if (cfg.mensaje_espera) app.append(el('div', { class: 'aviso c-ye' }, el('strong', {}, t('mensaje_profesor')), cfg.mensaje_espera));
 
-  app.append(el('div', { class: 'tarjeta candado c-vi' }, insignia('LuLock', 'vi', 'grande'), el('h2', {}, 'Tu caso se abrirá el día del taller'), el('p', { class: 'sub' }, cfg.pista_caso)));
+  app.append(el('div', { class: 'tarjeta candado c-vi' }, insignia('LuLock', 'vi', 'grande'), el('h2', {}, t('caso_bloqueado')), el('p', { class: 'sub' }, cfg.pista_caso)));
 
   app.append(seccionPrevias());
 
-  const extras = el('div', { class: 'tarjeta' }, el('h2', {}, 'Tu inscripción'),
-    el('p', {}, el('strong', {}, 'Vendrás con: '), NOMBRE_MODO[a.modo], ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, 'cambiar')),
-    cfg.whatsapp_url ? el('p', {}, el('a', { class: 'boton secundario c-gr', href: cfg.whatsapp_url, target: '_blank', rel: 'noopener' }, icono('LuMessageCircle'), 'Entrar en el grupo de WhatsApp')) : null,
-    el('p', { class: 'apagado' }, 'Abre este mismo enlace en el portátil si vas a traerlo: tu progreso se verá igual en los dos.'),
-    el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, 'No puedo ir: cancelar mi plaza')
+  const extras = el('div', { class: 'tarjeta' }, el('h2', {}, t('tu_inscripcion')),
+    el('p', {}, el('strong', {}, t('vendras_con')), nombreModo(a.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))),
+    (cfg.idiomas || []).length > 1 ? el('p', {}, el('strong', {}, t('idioma')), IDIOMAS[a.idioma] || a.idioma, ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirIdioma(); } }, t('cambiar'))) : null,
+    cfg.whatsapp_url ? el('p', {}, el('a', { class: 'boton secundario c-gr', href: cfg.whatsapp_url, target: '_blank', rel: 'noopener' }, icono('LuMessageCircle'), t('grupo_whatsapp'))) : null,
+    el('p', { class: 'apagado' }, t('abre_portatil')),
+    el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, t('cancelar_plaza'))
   );
   app.append(extras);
   pintarIconos(app);
@@ -139,19 +147,19 @@ function seccionPrevias() {
   const hechas = estado.progreso.previas;
   const faltan = previas.filter((p) => !hechas.includes(p.id));
   const caja = el('div', { class: 'tarjeta' });
-  caja.append(pildora(`Preparación · ${previas.length - faltan.length} de ${previas.length}`), el('h2', {}, 'Misiones previas'), el('p', { class: 'sub' }, 'Cúmplelas en casa. Así el día del taller vamos directos a jugar.'));
+  caja.append(pildora(t('preparacion', { hechas: previas.length - faltan.length, total: previas.length })), el('h2', {}, t('previas')), el('p', { class: 'sub' }, t('previas_txt')));
   caja.append(el('div', { class: 'barra' }, el('div', { style: `width:${Math.round(100 * (previas.length - faltan.length) / previas.length)}%` })));
-  caja.append(el('p', { class: faltan.length ? 'apagado' : 'acento' }, faltan.length ? `Te falta: ${faltan.map((p) => p.titulo.toLowerCase()).join(', ')}.` : '¡Todo listo! Nos vemos en el taller.'));
+  caja.append(el('p', { class: faltan.length ? 'apagado' : 'acento' }, faltan.length ? t('te_falta', { lista: faltan.map((p) => p.titulo.toLowerCase()).join(', ') }) : t('todo_listo')));
   previas.forEach((p, i) => {
     const hecho = hechas.includes(p.id);
-    const marca = el('button', { class: `marca ${hecho ? 'hecho' : ''}`, 'aria-label': hecho ? 'Desmarcar' : 'Marcar como hecha', 'aria-pressed': hecho ? 'true' : 'false' }, icono('LuCheck'));
+    const marca = el('button', { class: `marca ${hecho ? 'hecho' : ''}`, 'aria-label': hecho ? t('desmarcar') : t('marcar'), 'aria-pressed': hecho ? 'true' : 'false' }, icono('LuCheck'));
     const fila = el('div', { class: `item ${hecho ? 'hecho' : ''}` }, insignia(ICONO_PREVIA[p.id] || 'LuCircle', COLOR_PREVIA[p.id] || 'cy'),
       el('div', { class: 'texto' }, el('strong', {}, `${i + 1}. ${p.titulo}`), el('span', {}, p.texto)), marca);
     const alternar = async () => {
       try {
         estado.progreso = await post('previa', { t: token, id: p.id, hecho: !hecho });
         pintar(true);
-        if (!hecho) toast('Misión previa cumplida');
+        if (!hecho) toast(t('previa_cumplida'));
       } catch (e) { toast(e.message, 'error'); }
     };
     marca.addEventListener('click', alternar);
@@ -169,16 +177,20 @@ function descargarIcs() {
   const p = (n) => String(n).padStart(2, '0');
   const finStr = `${fin.getFullYear()}${p(fin.getMonth() + 1)}${p(fin.getDate())}T${p(fin.getHours())}${p(fin.getMinutes())}00`;
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Taller IA//ES', 'BEGIN:VEVENT', `UID:${token.slice(0, 12)}@taller-ia`,
-    `DTSTART;TZID=Europe/Madrid:${inicio}`, `DTEND;TZID=Europe/Madrid:${finStr}`, `SUMMARY:${cfg.nombre_taller} · Taller ${cfg.numero_taller}`,
-    `LOCATION:${[cfg.lugar, cfg.direccion].filter(Boolean).join(', ')}`, `DESCRIPTION:Tu enlace personal: ${location.href.split('&')[0]}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    `DTSTART;TZID=Europe/Madrid:${inicio}`, `DTEND;TZID=Europe/Madrid:${finStr}`, `SUMMARY:${cfg.nombre_taller} · ${cfg.numero_taller}`,
+    `LOCATION:${[cfg.lugar, cfg.direccion].filter(Boolean).join(', ')}`, `DESCRIPTION:${location.href.split('&')[0]}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   descargarBlob(new Blob([ics], { type: 'text/calendar' }), 'taller-ia.ics');
+}
+
+function opcionesModo(actual) {
+  return el('div', { class: 'opciones' }, ...['ambos', 'portatil', 'movil'].map((m) =>
+    el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'modo', value: m, checked: m === actual }), icono(ICONO_MODO[m]), el('span', {}, el('strong', {}, nombreModo(m)), el('small', {}, estado.config.modos[m])))));
 }
 
 function elegirModo(alConfirmar) {
   const actual = estado.alumno.modo;
-  const opciones = el('div', { class: 'opciones' }, ...['ambos', 'portatil', 'movil'].map((m) =>
-    el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'modo', value: m, checked: m === actual }), icono(ICONO_MODO[m]), el('span', {}, el('strong', {}, NOMBRE_MODO[m]), el('small', {}, estado.config.modos[m])))));
-  const { cerrar } = modal([el('h2', {}, '¿Con qué vas a hacer el taller?'), opciones,
+  const opciones = opcionesModo(actual);
+  const { cerrar } = modal([el('h2', {}, t('con_que_taller')), opciones,
     el('button', { class: 'boton bloque', onclick: async () => {
       const m = opciones.querySelector('input:checked').value;
       try {
@@ -186,28 +198,43 @@ function elegirModo(alConfirmar) {
         cerrar();
         if (alConfirmar) alConfirmar(); else pintar();
       } catch (e) { toast(e.message, 'error'); }
-    } }, 'Guardar')], { sinCerrar: !!alConfirmar });
+    } }, t('guardar'))], { sinCerrar: !!alConfirmar, textoCerrar: t('cerrar') });
+}
+
+function elegirIdioma() {
+  const actual = estado.alumno.idioma;
+  const opciones = el('div', { class: 'opciones' }, ...(estado.config.idiomas || ['es']).map((id) =>
+    el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'idioma', value: id, checked: id === actual }), icono('LuGlobe'), el('span', {}, el('strong', {}, IDIOMAS[id] || id)))));
+  const { cerrar } = modal([el('h2', {}, t('elegir_idioma')), opciones,
+    el('button', { class: 'boton bloque', onclick: async () => {
+      const id = opciones.querySelector('input:checked').value;
+      try {
+        if (id !== actual) { await post('idioma', { t: token, idioma: id }); setIdioma(id); estado = await get('alumno', { t: token }); }
+        cerrar();
+        pintar();
+      } catch (e) { toast(e.message, 'error'); }
+    } }, t('guardar'))], { textoCerrar: t('cerrar') });
 }
 
 async function cancelarPlaza() {
-  const { cerrar } = modal([el('h2', {}, '¿Seguro que cancelas tu plaza?'), el('p', { class: 'sub' }, 'Tu sitio pasará a la primera persona de la lista de espera. Si cambias de idea tendrás que volver a inscribirte.'),
+  const { cerrar } = modal([el('h2', {}, t('seguro_cancelar')), el('p', { class: 'sub' }, t('cancelar_txt')),
     el('button', { class: 'boton peligro bloque', onclick: async () => {
       try { await post('cancelar', { t: token }); borrarLocal('taller_token'); cerrar(); await cargar(); } catch (e) { toast(e.message, 'error'); }
-    } }, 'Sí, cancelar mi plaza')], { textoCerrar: 'No, me la quedo' });
+    } }, t('si_cancelar'))], { textoCerrar: t('no_me_quedo') });
 }
 
 function pintarEspera() {
   document.body.className = 'fondo-intro';
   const a = estado.alumno;
-  app.append(pildora('Lista de espera', 'ye'), el('h1', {}, `Hola, ${a.nombre.split(' ')[0]}`),
-    el('div', { class: 'tarjeta tinte c-ye' }, el('h2', {}, `Eres el n.º ${a.posicion_espera} de la lista de espera`), el('p', { class: 'sub' }, 'Si alguien deja su plaza, subirás automáticamente y te avisaremos por correo. Esta página también se actualizará sola.')),
-    el('p', {}, estado.config.fecha ? [el('strong', {}, 'Cuándo: '), estado.config.fecha_legible] : [el('strong', {}, 'Cuándo: '), 'fecha por confirmar']),
-    el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, 'Salir de la lista de espera'));
+  app.append(pildora(t('lista_espera'), 'ye'), el('h1', {}, t('hola', { nombre: a.nombre.split(' ')[0] })),
+    el('div', { class: 'tarjeta tinte c-ye' }, el('h2', {}, t('posicion_espera', { n: a.posicion_espera })), el('p', { class: 'sub' }, t('espera_sube'))),
+    el('p', {}, el('strong', {}, t('cuando')), estado.config.fecha ? estado.config.fecha_legible : t('fecha_por_confirmar')),
+    el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, t('salir_espera')));
   pintarIconos(app);
 }
 
 function pintarCancelado() {
-  app.append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, 'Tu plaza está cancelada'), el('p', { class: 'sub' }, 'Si quieres volver, inscríbete de nuevo con el mismo correo.'), el('a', { class: 'boton', href: 'index.html' }, 'Ir a la inscripción')));
+  app.append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, t('plaza_cancelada')), el('p', { class: 'sub' }, t('plaza_cancelada_txt')), el('a', { class: 'boton', href: 'index.html' }, t('ir_inscripcion'))));
 }
 
 /* ───────────── Día del taller ───────────── */
@@ -215,9 +242,8 @@ function pintarCancelado() {
 function pintarConfirmarModo() {
   document.body.className = 'fondo-cover';
   const a = estado.alumno;
-  const opciones = el('div', { class: 'opciones' }, ...['ambos', 'portatil', 'movil'].map((m) =>
-    el('label', { class: 'opcion' }, el('input', { type: 'radio', name: 'modo', value: m, checked: m === a.modo }), icono(ICONO_MODO[m]), el('span', {}, el('strong', {}, NOMBRE_MODO[m]), el('small', {}, estado.config.modos[m])))));
-  app.append(cabeceraAlumno(), el('div', { class: 'tarjeta tinte' }, pildora('¡Empieza el taller!'), el('h2', {}, '¿Con qué estás hoy?'), el('p', { class: 'sub' }, 'Los pasos de cada misión se adaptan a lo que tengas delante.'), opciones,
+  const opciones = opcionesModo(a.modo);
+  app.append(cabeceraAlumno(), el('div', { class: 'tarjeta tinte' }, pildora(t('empieza')), el('h2', {}, t('con_que_hoy')), el('p', { class: 'sub' }, t('pasos_adaptan')), opciones,
     el('button', { class: 'boton grande bloque', style: 'margin-top:14px', onclick: async () => {
       const m = opciones.querySelector('input:checked').value;
       try {
@@ -227,7 +253,7 @@ function pintarConfirmarModo() {
         vista = { tipo: 'mapa' };
         pintar();
       } catch (e) { toast(e.message, 'error'); }
-    } }, icono('LuPlay'), 'Abrir mi caso')));
+    } }, icono('LuPlay'), t('abrir_caso'))));
   pintarIconos(app);
 }
 
@@ -240,7 +266,7 @@ function pintarTaller() {
   document.body.className = '';
   const c = estado.contenido;
   if (!c || !c.kit) {
-    app.append(cabeceraAlumno(), el('div', { class: 'aviso atencion' }, 'Tu caso aún no está disponible. Avisa al profesor.'));
+    app.append(cabeceraAlumno(), el('div', { class: 'aviso atencion' }, t('caso_no_disponible')));
     return pintarIconos(app);
   }
   if (estado.alumno.modo === 'ambos') app.classList.add('modo-ambos');
@@ -249,19 +275,19 @@ function pintarTaller() {
   const k = c.kit;
   const prog = estado.progreso;
   app.append(cabeceraAlumno());
-  app.append(el('p', { class: 'apagado' }, icono(ICONO_MODO[estado.alumno.modo]), ' ', NOMBRE_MODO[estado.alumno.modo], ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, 'cambiar')));
+  app.append(el('p', { class: 'apagado' }, icono(ICONO_MODO[estado.alumno.modo]), ' ', nombreModo(estado.alumno.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))));
 
-  app.append(el('div', { class: 'tarjeta tinte c-cy' }, pildora('Tu personaje'),
-    el('h2', {}, k.personaje.nombre), el('p', { class: 'sub' }, `${k.personaje.edad} años · ${k.personaje.oficio} · ${k.personaje.ciudad}`),
+  app.append(el('div', { class: 'tarjeta tinte c-cy' }, pildora(t('tu_personaje')),
+    el('h2', {}, k.personaje.nombre), el('p', { class: 'sub' }, `${t('anos', { n: k.personaje.edad })} · ${k.personaje.oficio} · ${k.personaje.ciudad}`),
     el('p', { class: 'grande' }, k.personaje.problema),
-    el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, 'Lo que tú sabes'),
+    el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, t('lo_que_sabes')),
       el('ul', { style: 'padding-left:20px' }, ...k.lo_que_sabes.map((s) => el('li', {}, s))),
-      el('p', { class: 'apagado' }, 'Tus datos ficticios: DNI ', k.datos_ficticios.dni, ' · ', k.datos_ficticios.domicilio, Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')),
+      el('p', { class: 'apagado' }, t('datos_ficticios', { dni: k.datos_ficticios.dni, domicilio: k.datos_ficticios.domicilio }), Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')),
       el('p', { class: 'apagado' }, c.aviso))));
 
   app.append(seccionMedallas());
 
-  const mapa = el('div', { class: 'tarjeta' }, pildora(`Misiones · ${prog.misiones.length} de ${c.misiones.length - 1} sellos`), el('h2', {}, 'Mapa del día'));
+  const mapa = el('div', { class: 'tarjeta' }, pildora(t('misiones_sellos', { hechas: prog.misiones.length, total: c.misiones.length - 1 })), el('h2', {}, t('mapa_dia')));
   const lista = el('div', { class: 'mapa' });
   c.misiones.forEach((m) => {
     const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : prog.misiones.includes(m.id);
@@ -274,7 +300,7 @@ function pintarTaller() {
   app.append(mapa);
 
   if (prog.misiones.includes('M8')) {
-    app.append(el('div', { class: 'tarjeta c-vi' }, pildora('Misiones extra', 'vi'), el('h2', {}, '¿Te sobra tiempo?'),
+    app.append(el('div', { class: 'tarjeta c-vi' }, pildora(t('extra'), 'vi'), el('h2', {}, t('sobra_tiempo')),
       ...c.misiones_extra.map((m) => tarjetaPrompt(m.titulo, m.prompt, 'vi'))));
   }
   app.append(barraAyuda());
@@ -284,15 +310,14 @@ function pintarTaller() {
 function seccionMedallas() {
   const c = estado.contenido;
   const ganadas = estado.progreso.medallas;
-  const caja = el('div', { class: 'tarjeta' }, pildora('Medallas secretas', 'ye'), el('h2', {}, 'Tres medallas por descubrir'),
-    el('p', { class: 'sub' }, 'Nadie sabe cómo se ganan hasta el final. Si el profesor te dice una palabra secreta, escríbela aquí.'));
+  const caja = el('div', { class: 'tarjeta' }, pildora(t('medallas_secretas'), 'ye'), el('h2', {}, t('tres_medallas')), el('p', { class: 'sub' }, t('medallas_txt')));
   const rejilla = el('div', { class: 'medallas' }, ...c.medallas.map((m) => {
     const g = ganadas.includes(m.id);
     return el('div', { class: `medalla c-${m.color} ${g ? 'ganada' : ''}`, dataset: { medalla: m.id } }, el('div', { class: 'circulo' }, g ? icono(m.icono) : '?'), el('b', {}, g ? m.nombre : '???'), g && m.premiaba ? el('small', {}, m.premiaba) : null);
   }));
   const form = el('form', { class: 'botones', style: 'align-items:stretch' });
-  const input = el('input', { type: 'text', placeholder: 'Palabra secreta', autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
-  form.append(input, el('button', { class: 'boton secundario c-ye', type: 'submit' }, icono('LuSparkles'), 'Probar'));
+  const input = el('input', { type: 'text', placeholder: t('palabra_secreta'), autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
+  form.append(input, el('button', { class: 'boton secundario c-ye', type: 'submit' }, icono('LuSparkles'), t('probar')));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const palabra = input.value.trim();
@@ -324,15 +349,15 @@ function barraAyuda() {
       try {
         const r = await post('ayuda', { t: token, activa: !activa });
         estado.alumno.ayuda = r.ayuda;
-        toast(r.ayuda ? 'El profesor ya sabe que necesitas ayuda. Ahora va' : 'Aviso retirado');
+        toast(r.ayuda ? t('ayuda_pedida') : t('aviso_retirado'));
         pintar(true);
       } catch (e) { toast(e.message, 'error'); }
-    } }, icono('LuHand'), activa ? 'Ayuda pedida · cancelar' : '¡AYUDA!'));
+    } }, icono('LuHand'), activa ? t('ayuda_cancelar') : t('ayuda')));
 }
 
 function tarjetaPrompt(titulo, texto, color) {
   return el('div', { class: `prompt c-${color}` },
-    el('div', { class: 'cabecera' }, el('b', {}, titulo), el('button', { class: 'boton peque secundario', onclick: () => copiar(texto) }, icono('LuCopy'), 'Copiar')),
+    el('div', { class: 'cabecera' }, el('b', {}, titulo), el('button', { class: 'boton peque secundario', onclick: () => copiar(texto, txtCopiar()) }, icono('LuCopy'), t('copiar'))),
     el('div', { class: 'cuerpo' }, texto));
 }
 
@@ -343,56 +368,53 @@ function pintarMision(id) {
   const idx = c.misiones.indexOf(m);
   const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : estado.progreso.misiones.includes(m.id);
   app.classList.add(`c-${m.color}`);
-  app.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma peque', onclick: () => { vista = { tipo: 'mapa' }; pintar(); } }, icono('LuArrowLeft'), 'Mapa del día'),
-    el('span', { class: 'apagado', style: 'margin-left:auto;align-self:center' }, `Explorador n.º ${estado.alumno.numero}`)));
+  app.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma peque', onclick: () => { vista = { tipo: 'mapa' }; pintar(); } }, icono('LuArrowLeft'), t('mapa')),
+    el('span', { class: 'apagado', style: 'margin-left:auto;align-self:center' }, t('explorador_n', { n: estado.alumno.numero }))));
   app.append(el('div', { class: 'tarjeta fila tinte' }, insignia(m.icono, m.color, 'grande'),
-    el('div', {}, pildora(m.id === 'JEFE' ? `Jefe final · ${m.min} min` : `Misión ${m.id.slice(1)} · ${m.min} min`, m.color), el('h1', { style: 'font-size:1.7rem' }, m.titulo), el('p', { class: 'sub' }, m.objetivo))));
+    el('div', {}, pildora(m.id === 'JEFE' ? t('jefe_final', { min: m.min }) : t('mision_n', { n: m.id.slice(1), min: m.min }), m.color), el('h1', { style: 'font-size:1.7rem' }, m.titulo), el('p', { class: 'sub' }, m.objetivo))));
 
-  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Pasos'), el('ol', { class: 'pasos' }, ...pasosDe(m).map((p) => el('li', {}, p)))));
+  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, t('pasos')), el('ol', { class: 'pasos' }, ...pasosDe(m).map((p) => el('li', {}, p)))));
 
   if (m.imagen) app.append(seccionImagen(m.imagen, m.color));
 
   if (m.prompts && m.prompts.length) {
-    const caja = el('div', { class: 'tarjeta' }, el('h2', {}, m.prompts.length > 1 ? 'Tus prompts' : 'Tu prompt'), el('p', { class: 'apagado' }, estado.alumno.modo === 'ambos' ? 'Léelo en el portátil y díctaselo a Gemini con el micrófono del móvil.' : 'Toca «Copiar» y pégalo en Gemini.'));
+    const caja = el('div', { class: 'tarjeta' }, el('h2', {}, m.prompts.length > 1 ? t('tus_prompts') : t('tu_prompt')), el('p', { class: 'apagado' }, estado.alumno.modo === 'ambos' ? t('pista_ambos') : t('pista_copiar')));
     m.prompts.forEach((pid) => {
       if (pid === 'M3-B' && k.prompts['M3-B_piezas']) {
-        caja.append(el('h3', { style: 'margin-top:14px' }, 'M3-B · el prompt bueno, en sus cinco piezas'));
-        const piezas = el('div', { class: 'piezas' }, ...NOMBRE_PIEZAS.map(([clave, nombre, color], i) =>
-          el('div', { class: `pieza c-${color}` }, el('div', { class: 'num' }, `0${i + 1}`), el('div', { class: 'nombre' }, nombre), el('div', { class: 'txt' }, k.prompts['M3-B_piezas'][clave]))));
-        caja.append(piezas, tarjetaPrompt('M3-B · completo para copiar', k.prompts['M3-B'], m.color));
+        caja.append(el('h3', { style: 'margin-top:14px' }, t('m3b_titulo')));
+        const nombres = t('piezas');
+        const piezas = el('div', { class: 'piezas' }, ...PIEZAS.map(([clave, color], i) =>
+          el('div', { class: `pieza c-${color}` }, el('div', { class: 'num' }, `0${i + 1}`), el('div', { class: 'nombre' }, nombres[i]), el('div', { class: 'txt' }, k.prompts['M3-B_piezas'][clave]))));
+        caja.append(piezas, tarjetaPrompt(t('m3b_completo'), k.prompts['M3-B'], m.color));
       } else {
-        caja.append(tarjetaPrompt(pid === 'M3-A' ? 'M3-A · el prompt flojo' : pid, k.prompts[pid], m.color));
+        caja.append(tarjetaPrompt(pid === 'M3-A' ? t('m3a') : pid, k.prompts[pid], m.color));
       }
     });
     app.append(caja);
   }
 
-  const cierre = el('div', { class: 'tarjeta tinte' }, pildora('Misión cumplida cuando…', m.color), el('p', { class: 'grande' }, m.cumplida));
+  const cierre = el('div', { class: 'tarjeta tinte' }, pildora(t('cumplida_cuando'), m.color), el('p', { class: 'grande' }, m.cumplida));
   if (m.id === 'JEFE') {
-    if (cumplida) cierre.append(el('div', { class: 'aviso ok' }, el('strong', {}, '¡Jefe final superado! '), 'El profesor ha validado tu reto.'));
+    if (cumplida) cierre.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('jefe_superado')), t('jefe_validado')));
     else {
       const f = el('form', { class: 'botones', style: 'align-items:stretch' });
-      const inp = el('input', { type: 'text', placeholder: 'Código del profesor', autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
-      f.append(inp, el('button', { class: 'boton c-ye', type: 'submit' }, icono('LuCrown'), 'Validar'));
+      const inp = el('input', { type: 'text', placeholder: t('codigo_profesor'), autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
+      f.append(inp, el('button', { class: 'boton c-ye', type: 'submit' }, icono('LuCrown'), t('validar')));
       f.addEventListener('submit', async (e) => {
         e.preventDefault();
-        try { await post('jefe', { t: token, codigo: inp.value }); estado.alumno.jefe = true; toast('¡Jefe final superado!'); pintar(); } catch (err) { toast(err.message, 'error'); }
+        try { await post('jefe', { t: token, codigo: inp.value }); estado.alumno.jefe = true; toast(t('jefe_superado')); pintar(); } catch (err) { toast(err.message, 'error'); }
       });
-      cierre.append(el('p', { class: 'apagado' }, 'Enséñale tu reto al profesor: él lo valida desde su panel o te dice un código.'), f);
+      cierre.append(el('p', { class: 'apagado' }, t('jefe_txt')), f);
     }
   } else {
     cierre.append(el('button', { class: `boton grande bloque ${cumplida ? 'secundario' : ''} c-gr`, onclick: async () => {
       try {
         estado.progreso = await post('mision', { t: token, id: m.id, cumplida: !cumplida });
-        if (!cumplida) {
-          toast('¡Sello conseguido!');
-          const siguiente = c.misiones[idx + 1];
-          vista = siguiente ? { tipo: 'mapa' } : { tipo: 'mapa' };
-        }
+        if (!cumplida) { toast(t('sello')); vista = { tipo: 'mapa' }; }
         pintar();
         window.scrollTo(0, 0);
       } catch (e) { toast(e.message, 'error'); }
-    } }, icono(cumplida ? 'LuUndo2' : 'LuStamp'), cumplida ? 'Misión cumplida · desmarcar' : '¡Misión cumplida!'));
+    } }, icono(cumplida ? 'LuUndo2' : 'LuStamp'), cumplida ? t('desmarcar_mision') : t('mision_cumplida')));
   }
   app.append(cierre);
 
@@ -406,54 +428,54 @@ function pintarMision(id) {
 function seccionImagen(tipo, color) {
   const k = estado.contenido.kit;
   const info = tipo === 'documento' ? k.documento : tipo === 'cartel' ? k.cartel_m4 : k.mensaje_m8;
-  const caja = el('div', { class: 'tarjeta imagen-mision' }, el('h2', {}, NOMBRE_IMAGEN[tipo]));
-  const marco = el('div', {}, el('p', { class: 'apagado' }, 'Cargando la imagen…'));
+  const caja = el('div', { class: 'tarjeta imagen-mision' }, el('h2', {}, nombreImagen(tipo)));
+  const marco = el('div', {}, el('p', { class: 'apagado' }, t('cargando_imagen')));
   caja.append(marco);
   const botones = el('div', { class: 'botones' });
   caja.append(botones);
   if (tipo === 'documento') caja.append(el('p', { class: 'apagado' }, `${info.emisor.join(' · ')} — ${info.tipo}`));
-  if (tipo === 'mensaje') caja.append(el('p', { class: 'apagado' }, `${info.canal} · de ${info.de}`));
+  if (tipo === 'mensaje') caja.append(el('p', { class: 'apagado' }, `${info.canal} · ${t('de', { quien: info.de })}`));
 
   const zonas = tipo === 'documento' ? (k.zonas_guardian || []) : [];
   const nombre = `kit${estado.alumno.numero}_${tipo}.png`;
 
   const mostrar = (blob, tapada) => {
     const url = URL.createObjectURL(blob);
-    const img = el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], onclick: () => modal(el('img', { src: url, alt: NOMBRE_IMAGEN[tipo], style: 'width:100%;border-radius:12px' }), { ancho: true }) });
-    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? 'Esta es tu versión retocada: es la que se envía y se descarga.' : 'Toca la imagen para verla a pantalla completa.'));
+    const img = el('img', { src: url, alt: nombreImagen(tipo), onclick: () => modal(el('img', { src: url, alt: nombreImagen(tipo), style: 'width:100%;border-radius:12px' }), { ancho: true, textoCerrar: t('cerrar') }) });
+    vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? t('version_retocada') : t('toca_imagen')));
     vaciar(botones);
     const archivo = new File([blob], nombre, { type: 'image/png' });
     if (zonas.length) {
       // Discreto a propósito: cómo se gana la medalla Guardián no se explica.
-      botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPenLine'), 'Rotulador'));
+      botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPenLine'), t('rotulador')));
     }
     const movil = /Android|iPhone|iPad/i.test(navigator.userAgent) || matchMedia('(pointer: coarse)').matches;
     const nota = (texto) => botones.append(el('p', { class: 'apagado', style: 'width:100%;margin:4px 0 0' }, texto));
     if (movil && puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
       // En el móvil: la hoja de compartir del sistema; el alumno elige Gemini en la lista.
       botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
-        try { await navigator.share({ files: [archivo], title: NOMBRE_IMAGEN[tipo] }); } catch (e) { if (e.name !== 'AbortError') toast('No se ha podido compartir. Usa «Descargar imagen»', 'error'); }
-      } }, icono('LuShare2'), 'Compartir con Gemini'));
-      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
-      nota('En la lista que se abre, elige Gemini. Si no aparece, descárgala y súbela en Gemini con el botón +.');
+        try { await navigator.share({ files: [archivo], title: nombreImagen(tipo) }); } catch (e) { if (e.name !== 'AbortError') toast(t('no_compartir'), 'error'); }
+      } }, icono('LuShare2'), t('compartir_gemini')));
+      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), t('descargar_imagen')));
+      nota(t('nota_compartir'));
     } else {
       // En el portátil: al portapapeles y pegar en el chat (Ctrl+V), o descargar y arrastrar.
       const puedeCopiar = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem);
       if (puedeCopiar) {
         botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
-          try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Imagen copiada. En Gemini, pégala en el chat con Ctrl+V'); }
-          catch (e) { toast('No se ha podido copiar. Descárgala y arrástrala a Gemini', 'error'); }
-        } }, icono('LuClipboardCopy'), 'Copiar imagen'));
+          try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast(t('imagen_copiada')); }
+          catch (e) { toast(t('no_copiar_imagen'), 'error'); }
+        } }, icono('LuClipboardCopy'), t('copiar_imagen')));
       }
-      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), 'Descargar imagen'));
-      nota(puedeCopiar ? 'Copia la imagen y pégala en el chat de Gemini con Ctrl+V. O descárgala y arrástrala al chat.' : 'Descárgala y arrástrala al chat de Gemini, o súbela con el botón +.');
+      botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), t('descargar_imagen')));
+      nota(puedeCopiar ? t('nota_copiar') : t('nota_descargar'));
     }
     pintarIconos(caja);
   };
 
-  const tapar = async (blobActual) => {
+  const tapar = async () => {
     const original = imagenesCache[tipo];
-    const r = await abrirTapar(original, zonas, { titulo: 'Rotulador' });
+    const r = await abrirTapar(original, zonas, { titulo: t('rotulador') });
     if (!r) return;
     imagenesCache[`${tipo}_tapada`] = r.blob;
     mostrar(r.blob, true);
@@ -492,24 +514,24 @@ function pintarCierre() {
   document.body.className = 'fondo-close';
   const c = estado.contenido;
   const a = estado.alumno;
-  app.append(cabeceraAlumno(), pildora('Se desvela el secreto', 'ye'), el('h1', {}, 'Las tres medallas secretas'));
+  app.append(cabeceraAlumno(), pildora(t('se_desvela'), 'ye'), el('h1', {}, t('tres_medallas_t')));
   if (c && c.medallas) {
     app.append(el('div', { class: 'medallas' }, ...c.medallas.map((m) => {
       const g = estado.progreso.medallas.includes(m.id);
-      return el('div', { class: `medalla c-${m.color} ${g ? 'ganada' : ''}` }, el('div', { class: 'circulo' }, icono(m.icono)), el('b', {}, m.nombre), el('small', {}, m.premiaba || ''), g ? el('small', { class: 'acento' }, el('br'), '¡La tuya!') : null);
+      return el('div', { class: `medalla c-${m.color} ${g ? 'ganada' : ''}` }, el('div', { class: 'circulo' }, icono(m.icono)), el('b', {}, m.nombre), el('small', {}, m.premiaba || ''), g ? el('small', { class: 'acento' }, el('br'), t('la_tuya')) : null);
     })));
   }
-  app.append(el('div', { class: 'tarjeta tinte c-gr' }, el('h2', {}, 'Tu día'),
-    el('p', {}, `${estado.progreso.misiones.length} sellos · ${estado.progreso.medallas.length} medallas · jefe final ${a.jefe ? 'superado' : 'pendiente'}`)));
+  app.append(el('div', { class: 'tarjeta tinte c-gr' }, el('h2', {}, t('tu_dia')),
+    el('p', {}, t('resumen_dia', { sellos: estado.progreso.misiones.length, medallas: estado.progreso.medallas.length, jefe: a.jefe ? t('superado') : t('pendiente') }))));
 
   if (estado.encuesta_hecha) {
-    app.append(el('div', { class: 'aviso ok' }, el('strong', {}, '¡Gracias! '), 'Tu certificado saldrá a nombre de ', el('strong', {}, a.nombre_certificado || a.nombre), '.'));
+    app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, a.nombre_certificado || a.nombre), '.'));
   } else {
     app.append(formularioCierre());
   }
   if (c && c.kit) {
-    app.append(el('div', { class: 'tarjeta' }, el('details', {}, el('summary', { style: 'cursor:pointer' }, el('h2', { style: 'display:inline' }, 'Tus prompts, para volver a usarlos')),
-      el('p', { class: 'apagado', style: 'margin-top:10px' }, 'Sustituye los datos de tu personaje por los tuyos, y recuerda el escudo: nada de DNI ni cuentas.'),
+    app.append(el('div', { class: 'tarjeta' }, el('details', {}, el('summary', { style: 'cursor:pointer' }, el('h2', { style: 'display:inline' }, t('tus_prompts_volver'))),
+      el('p', { class: 'apagado', style: 'margin-top:10px' }, t('sustituye')),
       ...Object.entries(c.kit.prompts).filter(([k]) => k !== 'M3-B_piezas').map(([k, v]) => tarjetaPrompt(k, v, 'cy')))));
   }
   pintarIconos(app);
@@ -521,23 +543,23 @@ function formularioCierre() {
   const f = el('form', { class: 'tarjeta', novalidate: true });
   const escala = el('div', { class: 'opciones', style: 'grid-template-columns:repeat(5,1fr)' }, ...[1, 2, 3, 4, 5].map((n) =>
     el('label', { class: 'opcion', style: 'justify-content:center' }, el('input', { type: 'radio', name: 'seguridad', value: n }), el('strong', { style: 'font-size:1.4rem' }, n))));
-  const utiles = el('select', { name: 'mision_util' }, el('option', { value: '' }, 'Elige una'), ...(c ? c.misiones : []).map((m) => el('option', { value: m.id }, `${m.id === 'JEFE' ? '★' : m.id} · ${m.titulo}`)));
-  f.append(el('h2', {}, 'Antes de irte'),
-    el('label', { class: 'campo' }, el('span', {}, 'Nombre para el certificado'), el('input', { type: 'text', name: 'nombre_certificado', value: a.nombre_certificado || a.nombre, required: true }), el('span', { class: 'ayuda' }, 'Revísalo: así saldrá impreso.')),
-    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, '¿Cómo de seguro te sientes ahora usando IA? (1 = nada, 5 = mucho)'), escala),
-    el('label', { class: 'campo' }, el('span', {}, '¿Qué misión te ha resultado más útil?'), utiles),
-    el('label', { class: 'campo' }, el('span', {}, '¿Qué mejorarías?'), el('textarea', { name: 'mejorar', placeholder: 'Lo que quieras contarnos' })),
-    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'aviso_t2', checked: a.avisos }), el('span', {}, 'Avísame cuando haya Taller 2.')),
-    el('button', { class: 'boton grande bloque c-gr', type: 'submit' }, icono('LuCheck'), 'Enviar'));
+  const utiles = el('select', { name: 'mision_util' }, el('option', { value: '' }, t('elige')), ...(c ? c.misiones : []).map((m) => el('option', { value: m.id }, `${m.id === 'JEFE' ? '★' : m.id} · ${m.titulo}`)));
+  f.append(el('h2', {}, t('antes_irte')),
+    el('label', { class: 'campo' }, el('span', {}, t('nombre_certificado')), el('input', { type: 'text', name: 'nombre_certificado', value: a.nombre_certificado || a.nombre, required: true }), el('span', { class: 'ayuda' }, t('revisalo'))),
+    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('seguro_ia')), escala),
+    el('label', { class: 'campo' }, el('span', {}, t('mision_util')), utiles),
+    el('label', { class: 'campo' }, el('span', {}, t('mejorarias')), el('textarea', { name: 'mejorar', placeholder: t('mejorar_ph') })),
+    el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'aviso_t2', checked: a.avisos }), el('span', {}, t('aviso_t2'))),
+    el('button', { class: 'boton grande bloque c-gr', type: 'submit' }, icono('LuCheck'), t('enviar')));
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(f).entries());
-    if (!d.seguridad) return toast('Dinos de 1 a 5 cómo de seguro te sientes', 'error');
+    if (!d.seguridad) return toast(t('err_seguridad'), 'error');
     try {
       await post('cierre', { t: token, nombre_certificado: d.nombre_certificado, seguridad: d.seguridad, mision_util: d.mision_util, mejorar: d.mejorar, aviso_t2: !!d.aviso_t2 });
       estado = await get('alumno', { t: token });
       pintar();
-      toast('¡Gracias! Hasta el próximo taller');
+      toast(t('gracias_proximo'));
     } catch (err) { toast(err.message, 'error'); }
   });
   return f;
