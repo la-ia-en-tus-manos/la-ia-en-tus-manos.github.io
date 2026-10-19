@@ -113,8 +113,8 @@ export function haceCuanto(iso) {
 
 export const NOMBRE_MODO = { movil: 'Solo móvil', portatil: 'Solo portátil', ambos: 'Móvil y portátil' };
 export const ICONO_MODO = { movil: 'LuSmartphone', portatil: 'LuLaptop', ambos: 'LuMonitorSmartphone' };
-export const ICONO_PREVIA = { cuenta: 'LuKeyRound', movil_mano: 'LuSmartphone', app: 'LuDownload', hola: 'LuMessageCircle', portatil: 'LuLaptop', foto: 'LuImage', bateria: 'LuBatteryCharging' };
-export const COLOR_PREVIA = { cuenta: 'cy', movil_mano: 'bl', app: 'vi', hola: 'gr', portatil: 'ye', foto: 'pk', bateria: 'or' };
+export const ICONO_PREVIA = { cuenta: 'LuKeyRound', movil_mano: 'LuSmartphone', app: 'LuDownload', hola: 'LuMessageCircle', portatil: 'LuLaptop', foto: 'LuImage', bateria: 'LuBatteryCharging', notebook: 'LuBookOpen', gems: 'LuGem', edad: 'LuIdCard' };
+export const COLOR_PREVIA = { cuenta: 'cy', movil_mano: 'bl', app: 'vi', hola: 'gr', portatil: 'ye', foto: 'pk', bateria: 'or', notebook: 'bl', gems: 'vi', edad: 'gr' };
 
 export function cargarInicio(contenedor, texto = 'Cargando…') {
   vaciar(contenedor).append(el('p', { class: 'sub', style: 'text-align:center;padding:40px 0' }, texto));
