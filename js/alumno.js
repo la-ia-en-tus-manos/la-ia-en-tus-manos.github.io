@@ -30,7 +30,7 @@ async function cargar(silencioso = false) {
   if (!silencioso) cargarInicio(app, t('cargando'));
   try {
     estado = await get('alumno', { t: token });
-    guardarLocal('taller_token', { token, taller: estado.config.taller_id });
+    if (!estado.alumno.demo) guardarLocal('taller_token', { token, taller: estado.config.taller_id });
     if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}`);
   } catch (e) {
     if (e.codigo === 404) borrarLocal('taller_token');
@@ -102,7 +102,7 @@ function cabeceraAlumno() {
   const a = estado.alumno;
   return el('div', { class: 'cabecera-alumno' },
     el('div', {}, el('p', { class: 'sub', style: 'margin:0' }, t('hola', { nombre: a.nombre.split(' ')[0] })), el('h1', { style: 'font-size:1.5rem' }, estado.config.nombre_taller)),
-    el('div', { class: 'numero-explorador', style: 'text-align:right' }, estado.config.nivel || t('explorador'), el('b', {}, t('numero', { n: a.numero })))
+    el('div', { class: 'numero-explorador', style: 'text-align:right' }, a.demo ? el('span', { class: 'chip c-vi' }, 'DEMO') : (estado.config.nivel || t('explorador')), el('b', {}, t('numero', { n: a.numero })))
   );
 }
 

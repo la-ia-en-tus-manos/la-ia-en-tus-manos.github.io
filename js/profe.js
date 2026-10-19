@@ -103,7 +103,8 @@ function pintarInicio() {
     dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados')),
     dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
       el('div', { class: 'apagado', style: 'font-size:0.85rem' }, `Dirección propia de este taller. La general (${base}/) abre ${esDefecto ? 'este taller' : 'el taller por defecto'} o, si hay varios abiertos, deja elegir.`)),
-    dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos'))));
+    dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos')),
+    dato('Usuario demo (para enseñar en pantalla)', fichaDemo())));
 
   const avisos = [];
   if (!cfg.url_app) avisos.push(['atencion', 'Falta la dirección pública de la app: los correos no llevarán enlace completo. Configuración → Comunes a todos los talleres.']);
@@ -115,6 +116,23 @@ function pintarInicio() {
     el('div', { class: 'tarjeta kpi c-ye' }, el('b', {}, `${oc.espera}/${cfg.max_espera}`), el('small', {}, 'en lista de espera')),
     el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, estado.inscritos.filter((i) => i.estado === 'plaza' && i.previas === i.previas_total).length), el('small', {}, 'preparados del todo')),
     el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
+}
+
+// Alumno de pega del profesor: abre la app como un participante con el kit elegido, sin ocupar plaza ni contar.
+function fichaDemo() {
+  const d = estado.demo || {};
+  const kits = Array.from({ length: +estado.config.kits_activos || 20 }, (_, i) => i + 1);
+  const kit = el('select', { style: 'width:auto;min-width:90px' }, ...kits.map((n) => el('option', { value: n, selected: n === (d.kit || 1) }, `Kit ${String(n).padStart(2, '0')}`)));
+  const idioma = el('select', { style: 'width:auto' }, ...(estado.contenido.idiomas || ['es']).map((i) => el('option', { value: i, selected: i === (d.idioma || 'es') }, NOMBRE_IDIOMA[i] || i)));
+  const abrir = el('button', { class: 'boton peque c-vi', onclick: async () => {
+    try {
+      const r = await post('p_demo', { k: clave, kit: kit.value, idioma: idioma.value });
+      estado.demo = r;
+      window.open(r.enlace, '_blank', 'noopener');
+    } catch (e) { toast(e.message, 'error'); }
+  } }, icono('LuExternalLink'), 'Abrir en pestaña nueva');
+  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, idioma, abrir),
+    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado actual del taller.'));
 }
 
 // Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.
