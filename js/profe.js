@@ -113,6 +113,10 @@ function pintarInicio() {
     el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`),
     el('p', {}, el('strong', {}, 'Taller actual: '), cfg.taller_id, el('span', { class: 'apagado' }, ` · contenido ${cfg.contenido}`, ' · inscritos por taller: ', Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno'))));
   const esDefecto = (estado.talleres.find((tl) => tl.id === cfg.taller_id) || {}).defecto;
+  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Talleres'),
+    el('p', { class: 'sub' }, 'Cada taller tiene su inscripción, su estado, sus secretos y sus diplomas. Cambia de taller con el selector de arriba; crea otro desde «Configuración → Nuevo taller».'),
+    el('ul', { style: 'padding-left:20px;margin:0 0 12px' }, ...estado.talleres.map((tl) => el('li', {}, el('strong', {}, tl.id), ` · ${tl.nombre_taller} (${tl.nivel}) · ${NOMBRE_ESTADO[tl.estado] || tl.estado}`, tl.defecto ? el('span', { class: 'chip c-cy', style: 'margin-left:6px' }, 'por defecto') : null))),
+    el('button', { class: 'boton secundario c-gr', onclick: () => { pestana = 'config'; guardarLocal('profe_pestana', 'config'); pintar(); window.scrollTo(0, 0); } }, icono('LuPlus'), 'Nuevo taller')));
   const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html${esDefecto ? '' : `?taller=${encodeURIComponent(cfg.taller_id)}`}`;
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enlace de inscripción'), el('p', {}, el('a', { href: enlace, target: '_blank' }, enlace)),
     esDefecto ? null : el('p', { class: 'apagado' }, 'Este taller no es el que abre la dirección sin «?taller=»: el enlace lleva el parámetro. Puedes hacerlo el taller por defecto en «Configuración».'),
@@ -419,8 +423,8 @@ function pintarConfig() {
     Object.entries(campos).forEach(([k, inp]) => { cambios[k] = inp.value; });
     guardarConfig(cambios);
   });
-  app.append(f);
   app.append(formularioTallerNuevo());
+  app.append(f);
 }
 
 function formularioTallerNuevo() {
