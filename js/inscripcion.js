@@ -10,6 +10,11 @@ async function iniciar() {
   cargarInicio(app, t('cargando'));
   setTaller(tallerDeUrl());
   try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
+  if (window.TALLER_FIJO && pub.taller_id !== window.TALLER_FIJO) {
+    // Dirección de una edición que no existe: el servidor ha contestado con la de defecto.
+    vaciar(app).append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, t('taller_no_existe')), el('p', { class: 'sub' }, t('taller_no_existe_txt')), el('a', { class: 'boton', href: '/' }, t('ver_talleres'))));
+    return pintarIconos(app);
+  }
   aplicarColorTaller(pub.color);
   document.title = pub.nombre_taller || `${t('titulo_1')}${t('titulo_2')}`;
   pintar();
