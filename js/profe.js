@@ -422,13 +422,21 @@ function pintarDiplomas() {
   const medallas = estado.contenido.medallas;
   const lista = estado.inscritos.filter((i) => i.estado === 'plaza');
   const ids = lista.map((i) => i.id).join(',');
+  const pendientes = lista.filter((i) => !i.diploma_enviado);
+  const enviarDiplomas = async (repetir) => {
+    if (!window.confirm(repetir ? `¿Reenviar el diploma por correo a los ${lista.length} alumnos con plaza?` : `¿Enviar el diploma por correo a ${pendientes.length} alumnos?`)) return;
+    try { const r = await post('p_diplomas_correo', { k: clave, repetir }); toast(`Enviados ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
+  };
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Diplomas'),
-    el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF.'),
+    el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF. «Enviar por correo» manda a cada alumno, en su idioma, el enlace a su diploma (solo con el taller en «Terminado»).'),
     el('div', { class: 'botones' },
       lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
+      lista.length ? el('button', { class: 'boton c-gr', onclick: () => enviarDiplomas(false) }, icono('LuMail'), `Enviar por correo (${pendientes.length} pendientes)`) : null,
+      lista.length && pendientes.length < lista.length ? el('button', { class: 'boton fantasma', onclick: () => enviarDiplomas(true) }, icono('LuMail'), 'Reenviar a todos') : null,
       el('a', { class: 'boton secundario', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra'))));
+  if (estado.config.estado !== 'terminado' && lista.length) app.append(el('div', { class: 'aviso atencion' }, 'El envío por correo se activa con el taller en «Terminado»: hasta entonces el enlace del diploma no se abre para el alumno.'));
   if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay alumnos con plaza.'));
-  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, ''))));
+  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, 'Correo'), el('th', {}, ''))));
   const cuerpo = el('tbody');
   lista.forEach((i) => {
     cuerpo.append(el('tr', {},
@@ -438,6 +446,7 @@ function pintarDiplomas() {
       el('td', {}, `${i.misiones.length}`),
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
+      el('td', {}, i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
       el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
   tabla.append(cuerpo);
