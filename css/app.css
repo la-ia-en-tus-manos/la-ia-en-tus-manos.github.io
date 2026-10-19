@@ -349,6 +349,12 @@ select option { background: var(--bg1); }
   margin: 12px 0;
 }
 .prompt .cabecera { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.prompt .nota { margin: 0 0 10px; font-size: 0.95rem; color: var(--txt3); }
+.prompt.tarjeta-opcional { border-style: dashed; }
+.prompt.tarjeta-indicacion .cuerpo { font-style: italic; }
+.proyecto { display: flex; gap: 12px; align-items: center; margin: 8px 0 12px; }
+.proyecto small { display: block; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; }
+.proyecto b { font-size: 1.15rem; }
 .prompt .cabecera b { color: var(--acento); letter-spacing: 0.08em; }
 .prompt .cuerpo { font-size: 1.25rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 .modo-ambos .prompt .cuerpo { font-size: 1.6rem; line-height: 1.5; }

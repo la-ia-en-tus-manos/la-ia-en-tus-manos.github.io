@@ -19,7 +19,7 @@ const imagenesCache = {};
 
 const PIEZAS = [['quien_soy', 'bl'], ['que_ha_pasado', 'bl'], ['que_quiero', 'vi'], ['reglas', 'pk'], ['formato', 'or']];
 const nombreModo = (m) => t(`modo_${m}`);
-const nombreImagen = (tipo) => t(`img_${tipo}`);
+const nombreImagen = (tipo, archivo) => (archivo && archivo.titulo) || t(`img_${tipo}`);
 const txtCopiar = () => ({ ok: t('copiado'), error: t('no_copiado') });
 
 async function cargar(silencioso = false) {
@@ -301,11 +301,13 @@ function pintarTaller() {
 
   app.append(el('div', { class: 'tarjeta tinte c-cy' }, pildora(t('tu_personaje')),
     el('h2', {}, k.personaje.nombre), el('p', { class: 'sub' }, `${t('anos', { n: k.personaje.edad })} · ${k.personaje.oficio} · ${k.personaje.ciudad}`),
-    el('p', { class: 'grande' }, k.personaje.problema),
-    el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, t('lo_que_sabes')),
+    k.personaje.problema ? el('p', { class: 'grande' }, k.personaje.problema) : null,
+    k.proyecto ? el('div', { class: 'proyecto' }, insignia(k.proyecto.icono || 'LuFolderKanban', 'cy', 'peque'),
+      el('div', {}, el('small', {}, k.proyecto.tipo ? `${t('tu_proyecto')} · ${k.proyecto.tipo}` : t('tu_proyecto')), el('b', {}, k.proyecto.titulo))) : null,
+    k.lo_que_sabes ? el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, t('lo_que_sabes')),
       el('ul', { style: 'padding-left:20px' }, ...k.lo_que_sabes.map((s) => el('li', {}, s))),
-      el('p', { class: 'apagado' }, t('datos_ficticios', { dni: k.datos_ficticios.dni, domicilio: k.datos_ficticios.domicilio }), Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')),
-      el('p', { class: 'apagado' }, c.aviso))));
+      k.datos_ficticios ? el('p', { class: 'apagado' }, t('datos_ficticios', { dni: k.datos_ficticios.dni, domicilio: k.datos_ficticios.domicilio }), Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')) : null,
+      el('p', { class: 'apagado' }, c.aviso)) : el('p', { class: 'apagado' }, c.aviso)));
 
   app.append(seccionMedallas());
 
@@ -377,10 +379,32 @@ function barraAyuda() {
     } }, icono('LuHand'), activa ? t('ayuda_cancelar') : t('ayuda')));
 }
 
-function tarjetaPrompt(titulo, texto, color) {
-  return el('div', { class: `prompt c-${color}` },
-    el('div', { class: 'cabecera' }, el('b', {}, titulo), el('button', { class: 'boton peque secundario', onclick: () => copiar(texto, txtCopiar()) }, icono('LuCopy'), t('copiar'))),
+// tarjeta: {tipo, nota} de misiones.tarjetas. «instrucciones» se pega fuera del chat (Gem, AI Studio),
+// «indicacion» no es un prompt (no se copia) y «opcional» es para quien va rápido.
+function tarjetaPrompt(titulo, texto, color, tarjeta) {
+  const tipo = tarjeta && tarjeta.tipo;
+  return el('div', { class: `prompt c-${tipo === 'opcional' ? 'ye' : color} ${tipo ? `tarjeta-${tipo}` : ''}` },
+    el('div', { class: 'cabecera' }, el('b', {}, titulo, tipo ? el('span', { class: 'chip', style: 'margin-left:8px' }, t(`tarjeta_${tipo}`)) : null),
+      tipo === 'indicacion' ? null : el('button', { class: 'boton peque secundario', onclick: () => copiar(texto, txtCopiar()) }, icono('LuCopy'), t('copiar'))),
+    tarjeta && tarjeta.nota ? el('p', { class: 'nota' }, icono('LuInfo', 'inline'), ' ', tarjeta.nota) : null,
     el('div', { class: 'cuerpo' }, texto));
+}
+
+// Material para descargar (documentos del cuaderno): un botón por archivo; el fichero llega del servidor.
+function seccionArchivos(ids, color) {
+  const k = estado.contenido.kit;
+  const caja = el('div', { class: 'tarjeta' }, el('h2', {}, t('tus_documentos')), el('p', { class: 'apagado' }, t('documentos_txt')));
+  ids.forEach((id) => {
+    const a = (k.archivos || []).find((x) => x.id === id);
+    if (!a) return;
+    const boton = el('button', { class: `boton bloque c-${color}`, style: 'justify-content:flex-start;text-align:left', onclick: async () => {
+      boton.disabled = true;
+      try { descargarBlob(await cargarImagen(id), a.nombre); toast(t('descargado')); } catch (e) { toast(e.message, 'error'); }
+      boton.disabled = false;
+    } }, icono('LuFileDown'), el('span', {}, el('b', {}, a.titulo), a.subtitulo ? el('small', { style: 'display:block;font-weight:400' }, a.subtitulo) : null));
+    caja.append(boton);
+  });
+  return caja;
 }
 
 function pintarMision(id) {
@@ -391,12 +415,13 @@ function pintarMision(id) {
   const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : estado.progreso.misiones.includes(m.id);
   app.classList.add(`c-${m.color}`);
   app.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma peque', onclick: () => { vista = { tipo: 'mapa' }; pintar(); } }, icono('LuArrowLeft'), t('mapa')),
-    el('span', { class: 'apagado', style: 'margin-left:auto;align-self:center' }, t('explorador_n', { n: estado.alumno.numero }))));
+    el('span', { class: 'apagado', style: 'margin-left:auto;align-self:center' }, `${estado.config.nivel || t('explorador')} ${t('numero', { n: estado.alumno.numero })}`)));
   app.append(el('div', { class: 'tarjeta fila tinte' }, insignia(m.icono, m.color, 'grande'),
     el('div', {}, pildora(m.id === 'JEFE' ? t('jefe_final', { min: m.min }) : t('mision_n', { n: m.id.slice(1), min: m.min }), m.color), el('h1', { style: 'font-size:1.7rem' }, m.titulo), el('p', { class: 'sub' }, m.objetivo))));
 
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, t('pasos')), el('ol', { class: 'pasos' }, ...pasosDe(m).map((p) => el('li', {}, p)))));
 
+  if (m.archivos && m.archivos.length) app.append(seccionArchivos(m.archivos, m.color));
   if (m.imagen) app.append(seccionImagen(m.imagen, m.color));
 
   if (m.prompts && m.prompts.length) {
@@ -409,7 +434,7 @@ function pintarMision(id) {
           el('div', { class: `pieza c-${color}` }, el('div', { class: 'num' }, `0${i + 1}`), el('div', { class: 'nombre' }, nombres[i]), el('div', { class: 'txt' }, k.prompts['M3-B_piezas'][clave]))));
         caja.append(piezas, tarjetaPrompt(t('m3b_completo'), k.prompts['M3-B'], m.color));
       } else {
-        caja.append(tarjetaPrompt(pid === 'M3-A' ? t('m3a') : pid, k.prompts[pid], m.color));
+        caja.append(tarjetaPrompt(pid === 'M3-A' ? t('m3a') : pid, k.prompts[pid], m.color, (c.tarjetas || {})[pid]));
       }
     });
     app.append(caja);
@@ -449,34 +474,36 @@ function pintarMision(id) {
 
 function seccionImagen(tipo, color) {
   const k = estado.contenido.kit;
-  const info = tipo === 'documento' ? k.documento : tipo === 'cartel' ? k.cartel_m4 : k.mensaje_m8;
-  const caja = el('div', { class: 'tarjeta imagen-mision' }, el('h2', {}, nombreImagen(tipo)));
+  const archivo = (k.archivos || []).find((a) => a.id === tipo);
+  const info = archivo ? null : tipo === 'documento' ? k.documento : tipo === 'cartel' ? k.cartel_m4 : k.mensaje_m8;
+  const caja = el('div', { class: 'tarjeta imagen-mision' }, el('h2', {}, nombreImagen(tipo, archivo)));
   const marco = el('div', {}, el('p', { class: 'apagado' }, t('cargando_imagen')));
   caja.append(marco);
   const botones = el('div', { class: 'botones' });
   caja.append(botones);
-  if (tipo === 'documento') caja.append(el('p', { class: 'apagado' }, `${info.emisor.join(' · ')} — ${info.tipo}`));
-  if (tipo === 'mensaje') caja.append(el('p', { class: 'apagado' }, `${info.canal} · ${t('de', { quien: info.de })}`));
+  if (info && tipo === 'documento') caja.append(el('p', { class: 'apagado' }, `${info.emisor.join(' · ')} — ${info.tipo}`));
+  if (info && tipo === 'mensaje') caja.append(el('p', { class: 'apagado' }, `${info.canal} · ${t('de', { quien: info.de })}`));
+  if (archivo && archivo.subtitulo) caja.append(el('p', { class: 'apagado' }, archivo.subtitulo));
 
   const zonas = tipo === 'documento' ? (k.zonas_guardian || []) : [];
-  const nombre = `kit${estado.alumno.numero}_${tipo}.png`;
+  const nombre = archivo ? archivo.nombre : `kit${estado.alumno.numero}_${tipo}.png`;
 
   const mostrar = (blob, tapada) => {
     const url = URL.createObjectURL(blob);
-    const img = el('img', { src: url, alt: nombreImagen(tipo), onclick: () => modal(el('img', { src: url, alt: nombreImagen(tipo), style: 'width:100%;border-radius:12px' }), { ancho: true, textoCerrar: t('cerrar') }) });
+    const img = el('img', { src: url, alt: nombreImagen(tipo, archivo), onclick: () => modal(el('img', { src: url, alt: nombreImagen(tipo, archivo), style: 'width:100%;border-radius:12px' }), { ancho: true, textoCerrar: t('cerrar') }) });
     vaciar(marco).append(img, el('p', { class: 'apagado', style: 'margin-top:6px' }, tapada ? t('version_retocada') : t('toca_imagen')));
     vaciar(botones);
-    const archivo = new File([blob], nombre, { type: 'image/png' });
+    const fichero = new File([blob], nombre, { type: 'image/png' });
     if (zonas.length) {
       // Discreto a propósito: cómo se gana la medalla Guardián no se explica.
       botones.append(el('button', { class: 'boton fantasma', onclick: () => tapar(blob) }, icono('LuPenLine'), t('rotulador')));
     }
     const movil = /Android|iPhone|iPad/i.test(navigator.userAgent) || matchMedia('(pointer: coarse)').matches;
     const nota = (texto) => botones.append(el('p', { class: 'apagado', style: 'width:100%;margin:4px 0 0' }, texto));
-    if (movil && puedeCompartirArchivos() && navigator.canShare({ files: [archivo] })) {
+    if (movil && puedeCompartirArchivos() && navigator.canShare({ files: [fichero] })) {
       // En el móvil: la hoja de compartir del sistema; el alumno elige Gemini en la lista.
       botones.append(el('button', { class: `boton c-${color}`, onclick: async () => {
-        try { await navigator.share({ files: [archivo], title: nombreImagen(tipo) }); } catch (e) { if (e.name !== 'AbortError') toast(t('no_compartir'), 'error'); }
+        try { await navigator.share({ files: [fichero], title: nombreImagen(tipo, archivo) }); } catch (e) { if (e.name !== 'AbortError') toast(t('no_compartir'), 'error'); }
       } }, icono('LuShare2'), t('compartir_gemini')));
       botones.append(el('button', { class: 'boton secundario', onclick: () => descargarBlob(blob, nombre) }, icono('LuDownload'), t('descargar_imagen')));
       nota(t('nota_compartir'));

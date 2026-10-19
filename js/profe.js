@@ -492,12 +492,24 @@ async function pintarSoluciones() {
     r.kits.forEach((k) => {
       caja.append(el('div', { class: `tarjeta ${k.alumno ? 'tinte' : ''}` },
         el('div', { style: 'display:flex;justify-content:space-between;gap:10px;align-items:baseline' }, el('h3', {}, `Kit ${k.numero} · ${k.personaje.nombre}`), el('span', { class: 'apagado' }, k.alumno ? `${k.alumno}${k.idioma && k.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[k.idioma]}` : ''}` : 'sin asignar')),
-        el('p', { class: 'apagado' }, `${k.genero === 'm' ? 'hombre' : 'mujer'} · ${k.personaje.edad} años · ${k.personaje.oficio} · ${k.personaje.problema}`),
-        el('p', {}, el('strong', { class: 'acento' }, 'Guardián debe tapar: '), k.guia.debe_tapar_guardian),
-        el('p', {}, el('strong', { class: 'c-rd acento' }, 'M8: '), `${k.mensaje_m8.canal} de ${k.mensaje_m8.de}. ${k.guia.m8_tipo_y_senales}`)));
+        el('p', { class: 'apagado' }, [`${k.genero === 'm' ? 'hombre' : 'mujer'} · ${k.personaje.edad} años · ${k.personaje.oficio}`, k.personaje.problema, k.proyecto ? `proyecto: ${k.proyecto.titulo}` : ''].filter(Boolean).join(' · ')),
+        ...pintarGuia(k.guia || {}, k),
+        k.archivos && k.archivos.length ? el('p', { class: 'apagado' }, `Archivos: ${k.archivos.join(', ')}`) : null));
     });
     pintarIconos(caja);
   } catch (e) { errorPantalla(caja, e.message); }
+}
+
+// La guía del profesor de cada kit tiene una forma distinta por taller: se pinta lo que haya.
+const ETIQUETA_GUIA = { debe_tapar_guardian: 'Guardián debe tapar', m8_tipo_y_senales: 'M8', preguntas_m2: 'Respuestas de M2', pregunta_trampa: 'Pregunta trampa (M2)', total_tickets: 'Total real de los tickets (M5)', bulo: 'Bulo de M4', esperado_bulo: 'Lo esperado', wikipedia: 'Página de Wikipedia (M3)' };
+function pintarGuia(guia, k) {
+  return Object.entries(guia).map(([clave, v]) => {
+    const etiqueta = ETIQUETA_GUIA[clave] || clave.replace(/_/g, ' ');
+    if (clave === 'm8_tipo_y_senales' && k.mensaje_m8) return el('p', {}, el('strong', { class: 'c-rd acento' }, 'M8: '), `${k.mensaje_m8.canal} de ${k.mensaje_m8.de}. ${v}`);
+    if (Array.isArray(v)) return el('div', {}, el('strong', { class: 'acento' }, `${etiqueta}:`), el('ul', { style: 'margin:4px 0 8px;padding-left:20px' }, ...v.map((x) => el('li', {}, typeof x === 'object' ? [el('b', {}, x.pregunta || ''), ' → ', x.respuesta || x.esperado || ''] : String(x)))));
+    if (v && typeof v === 'object') return el('p', {}, el('strong', { class: 'acento' }, `${etiqueta}: `), [v.pregunta ? el('b', {}, v.pregunta) : null, v.pregunta ? ' → ' : '', v.respuesta || v.esperado || Object.values(v).join(' · ')]);
+    return el('p', {}, el('strong', { class: 'acento' }, `${etiqueta}: `), typeof v === 'number' ? v.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €' : String(v));
+  });
 }
 
 /* ───────────── Datos ───────────── */
