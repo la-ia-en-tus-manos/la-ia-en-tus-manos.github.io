@@ -49,13 +49,16 @@ async function cargar(silencioso = false) {
   programarRefresco();
 }
 
+let guardando = 0;               // peticiones de progreso en vuelo: el refresco no las pisa
+
 function programarRefresco() {
   clearInterval(temporizador);
   const segundos = estado.config.estado === 'taller_en_curso' ? REFRESCO_ALUMNO_S : 90;
   temporizador = setInterval(async () => {
-    if (document.hidden) return;
+    if (document.hidden || guardando) return;
     try {
       const nuevo = await get('alumno', { t: token });
+      if (guardando) return;
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
       const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha]);
       const cambio = huella(nuevo) !== huella(estado);
@@ -165,11 +168,20 @@ function seccionPrevias() {
     const fila = el('div', { class: `item ${hecho ? 'hecho' : ''}` }, insignia(ICONO_PREVIA[p.id] || 'LuCircle', COLOR_PREVIA[p.id] || 'cy'),
       el('div', { class: 'texto' }, el('strong', {}, `${i + 1}. ${p.titulo}`), el('span', {}, p.texto)), marca);
     const alternar = async () => {
+      // Se pinta al instante y se guarda detrás: la hoja de Google tarda unos segundos en contestar.
+      const antes = estado.progreso.previas.slice();
+      estado.progreso.previas = hecho ? antes.filter((id) => id !== p.id) : antes.concat(p.id);
+      pintar(true);
+      if (!hecho) toast(t('previa_cumplida'));
+      guardando++;
       try {
-        estado.progreso = await post('previa', { t: token, id: p.id, hecho: !hecho });
+        const prog = await post('previa', { t: token, id: p.id, hecho: !hecho });
+        estado.progreso.misiones = prog.misiones; estado.progreso.medallas = prog.medallas;
+      } catch (e) {
+        estado.progreso.previas = antes;
         pintar(true);
-        if (!hecho) toast(t('previa_cumplida'));
-      } catch (e) { toast(e.message, 'error'); }
+        toast(e.message, 'error');
+      } finally { guardando--; }
     };
     marca.addEventListener('click', alternar);
     fila.addEventListener('click', (e) => { if (e.target === fila || fila.querySelector('.texto').contains(e.target)) alternar(); });
@@ -455,12 +467,20 @@ function pintarMision(id) {
     }
   } else {
     cierre.append(el('button', { class: `boton grande bloque ${cumplida ? 'secundario' : ''} c-gr`, onclick: async () => {
+      const antes = estado.progreso.misiones.slice();
+      estado.progreso.misiones = cumplida ? antes.filter((id) => id !== m.id) : antes.concat(m.id);
+      if (!cumplida) { toast(t('sello')); vista = { tipo: 'mapa' }; }
+      pintar();
+      window.scrollTo(0, 0);
+      guardando++;
       try {
-        estado.progreso = await post('mision', { t: token, id: m.id, cumplida: !cumplida });
-        if (!cumplida) { toast(t('sello')); vista = { tipo: 'mapa' }; }
+        const prog = await post('mision', { t: token, id: m.id, cumplida: !cumplida });
+        estado.progreso.medallas = prog.medallas;
+      } catch (e) {
+        estado.progreso.misiones = antes;
         pintar();
-        window.scrollTo(0, 0);
-      } catch (e) { toast(e.message, 'error'); }
+        toast(e.message, 'error');
+      } finally { guardando--; }
     } }, icono(cumplida ? 'LuUndo2' : 'LuStamp'), cumplida ? t('desmarcar_mision') : t('mision_cumplida')));
   }
   app.append(cierre);
