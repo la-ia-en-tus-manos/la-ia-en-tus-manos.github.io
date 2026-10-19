@@ -403,7 +403,7 @@ function barraAyuda() {
     } }, icono('LuHand'), activa ? t('ayuda_cancelar') : t('ayuda')));
 }
 
-// tarjeta: {tipo, nota} de misiones.tarjetas. «instrucciones» se pega fuera del chat (Gem, AI Studio),
+// tarjeta: {tipo, nota} de misiones.tarjetas. «instrucciones» se pega fuera del chat (habilidad de Gemini, AI Studio),
 // «indicacion» no es un prompt (no se copia) y «opcional» es para quien va rápido.
 function tarjetaPrompt(titulo, texto, color, tarjeta) {
   const tipo = tarjeta && tarjeta.tipo;
