@@ -114,6 +114,7 @@ async function iniciar() {
   try {
     if (params.has('demo')) {
       const d = { ...DEMO, idioma: params.get('idioma') || idiomaActual() };
+      if (params.has('todo')) d.medallas = d.medallas.map((m) => ({ ...m, ganada: true }));   // muestra con todo conseguido
       if (d.idioma === 'pt-BR') d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: 'Concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
       return pintar(d);
     }
