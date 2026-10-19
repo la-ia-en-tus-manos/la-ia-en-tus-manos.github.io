@@ -66,7 +66,15 @@ function trazoFirma(nombre) {
 function rubrica(firmante) {
   const nombre = (firmante || 'Firma').trim();
   const { d, ancho } = trazoFirma(nombre);
-  return el('div', { class: 'dip-rubrica', 'aria-hidden': 'true', html: `<svg viewBox="0 -14 ${ancho} 76"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".35" transform="translate(1.5 1.5)"/><path d="M${ancho * 0.08} 56c${ancho * 0.25} -9, ${ancho * 0.55} -11, ${ancho * 0.84} -5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>` });
+  const caja = el('div', { class: 'dip-rubrica', 'aria-hidden': 'true', html: `<svg viewBox="0 -40 ${ancho} 110"><g transform="rotate(-4 ${ancho / 2} 30)"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".35" transform="translate(1.5 1.5)"/><path d="M${ancho * 0.08} 56c${ancho * 0.25} -9, ${ancho * 0.55} -11, ${ancho * 0.84} -5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></g></svg>` });
+  // El trazo cambia con cada nombre: una vez en pantalla se mide y se encuadra entero en su hueco.
+  setTimeout(() => {
+    const svg = caja.querySelector('svg');
+    if (!svg || !svg.isConnected) return;
+    const b = svg.getBBox();
+    svg.setAttribute('viewBox', `${b.x - 4} ${b.y - 4} ${b.width + 8} ${b.height + 8}`);
+  }, 0);
+  return caja;
 }
 
 function rellenar(plantilla, d) {
