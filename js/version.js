@@ -1,2 +1,2 @@
 // GENERADO por scripts/publicar_app.sh. No editar a mano.
-export const VERSION_APP = { commit: '99f33af', fecha: '2026-10-19 17:07' };
+export const VERSION_APP = { commit: 'beb1505', fecha: '2026-10-19 18:17' };

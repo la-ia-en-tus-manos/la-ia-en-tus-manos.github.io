@@ -100,11 +100,11 @@ function pintarInicio() {
       el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Hasta «Taller en curso» los alumnos no reciben su caso.')),
     dato('Cuándo y dónde', el('b', {}, cfg.fecha ? `${cfg.fecha}${cfg.hora_inicio ? ` · ${cfg.hora_inicio}` : ''}` : 'Sin fecha'), el('br'), cfg.lugar || el('span', { class: 'apagado' }, 'Sin lugar'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'cambiar')),
     dato('Plazas', el('b', {}, `${oc.plaza} de ${plazas}`), ` ocupadas · ${oc.espera} en espera (máx. ${cfg.max_espera})`, el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'ver inscritos')),
-    dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados')),
+    dato('Usuario demo (para enseñar en pantalla)', fichaDemo()),
     dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
       el('div', { class: 'apagado', style: 'font-size:0.85rem' }, `Dirección propia de este taller. La general (${base}/) abre ${esDefecto ? 'este taller' : 'el taller por defecto'} o, si hay varios abiertos, deja elegir.`)),
     dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos')),
-    dato('Usuario demo (para enseñar en pantalla)', fichaDemo())));
+    dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados'))));
 
   const avisos = [];
   if (!cfg.url_app) avisos.push(['atencion', 'Falta la dirección pública de la app: los correos no llevarán enlace completo. Configuración → Comunes a todos los talleres.']);
