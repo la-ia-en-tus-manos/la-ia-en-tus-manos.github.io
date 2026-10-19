@@ -1,10 +1,11 @@
-import { get, post } from './api.js';
+import { get, post, setTaller, tallerActual, aplicarColorTaller } from './api.js';
 import { REFRESCO_VIVO_S } from './config.js';
 import { el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, descargarBlob, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, haceCuanto, fechaHora, NOMBRE_MODO } from './ui.js';
 import { VERSION_APP } from './version.js';
 
 const app = document.getElementById('app');
 let clave = sessionStorage.getItem('profe_clave') || '';
+setTaller(new URLSearchParams(location.search).get('taller') || leerLocal('profe_taller') || '');
 let estado = null;
 let pestana = leerLocal('profe_pestana') || 'inicio';
 let vivoTimer = null;        // Worker que marca el ritmo del refresco (los temporizadores de un worker no se frenan en segundo plano)
@@ -32,6 +33,7 @@ const ETIQUETA_CONFIG = {
   certificado_titulo_pt: ['Diploma · título en portugués', 'text'], certificado_texto_pt: ['Diploma · texto en portugués', 'textarea'], certificado_firmante_cargo_pt: ['Diploma · cargo en portugués', 'text']
 };
 const NOMBRE_IDIOMA = { es: 'ES', 'pt-BR': 'PT-BR' };
+const NOMBRE_COLOR = { cy: 'Turquesa (Explorador)', vi: 'Violeta (Constructor)', ye: 'Dorado (Maestro)', bl: 'Azul', gr: 'Verde', pk: 'Rosa', or: 'Naranja', rd: 'Rojo' };
 const NOMBRE_GENERO = { f: 'mujer', m: 'hombre', x: 'indiferente', '': '—' };
 const NOMBRE_ESTADO = { borrador: 'Borrador', inscripcion_abierta: 'Inscripción abierta', inscripcion_cerrada: 'Inscripción cerrada', taller_en_curso: 'Taller en curso', terminado: 'Terminado' };
 
@@ -67,8 +69,12 @@ function pintar() {
   document.title = TITULO_BASE;
   vaciar(app);
   const cfg = estado.config;
+  aplicarColorTaller(cfg.color);
+  if (tallerActual() !== cfg.taller_id) { setTaller(cfg.taller_id); guardarLocal('profe_taller', cfg.taller_id); }
+  const selectorTaller = el('select', { class: 'selector-taller', title: 'Taller que estás gestionando' }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.id === cfg.taller_id }, `${tl.id} · ${tl.nombre_taller} (${tl.nivel}) · ${NOMBRE_ESTADO[tl.estado] || tl.estado}`)));
+  selectorTaller.addEventListener('change', async () => { setTaller(selectorTaller.value); guardarLocal('profe_taller', selectorTaller.value); await recargar(false); });
   app.append(el('div', { class: 'cabecera-alumno' },
-    el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller)),
+    el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller), estado.talleres.length > 1 ? el('div', { style: 'margin-top:8px' }, selectorTaller) : null),
     el('div', { style: 'text-align:right' }, el('span', { class: `chip c-${cfg.estado === 'taller_en_curso' ? 'gr' : cfg.estado === 'inscripcion_abierta' ? 'cy' : 'ye'}` }, NOMBRE_ESTADO[cfg.estado]), el('br'),
       el('button', { class: 'boton fantasma peque', style: 'margin-top:8px', onclick: () => { clave = ''; sessionStorage.removeItem('profe_clave'); pintarAcceso(); } }, 'Salir'))));
   const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
@@ -90,7 +96,7 @@ function pintarInicio() {
     el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.cuota_correo), el('small', {}, 'correos disponibles hoy'))));
 
   const avisos = [];
-  if (!estado.secretos.ingenio || !estado.secretos.guardian || !estado.secretos.detective || !estado.secretos.jefe) avisos.push(['atencion', 'Faltan palabras secretas o el código del jefe final. Pestaña «Secretos».']);
+  if (estado.contenido.medallas.some((m) => !estado.secretos[m.id]) || !estado.secretos.jefe) avisos.push(['atencion', 'Faltan palabras secretas o el código del jefe final de este taller. Pestaña «Secretos».']);
   if (!cfg.url_app) avisos.push(['atencion', 'Falta la dirección pública de la app: los correos no llevarán enlace completo. Pestaña «Configuración».']);
   if (!estado.imagenes_ok) avisos.push(['error', 'No hay carpeta de imágenes configurada: ejecuta configurarInicial() en Apps Script.']);
   if (!cfg.fecha) avisos.push(['', 'Sin fecha: los alumnos ven «por confirmar». Cuando la pongas, avísales desde «Inscritos».']);
@@ -105,9 +111,11 @@ function pintarInicio() {
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Versiones en marcha'),
     el('p', {}, el('strong', {}, 'Backend (Apps Script): '), `${v.version || '?'} · ${v.fecha || 'fecha desconocida'}`, v.commit ? ` · commit ${v.commit}` : '', v.descripcion ? el('span', { class: 'apagado' }, ` · ${v.descripcion}`) : null),
     el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`),
-    el('p', {}, el('strong', {}, 'Edición actual: '), cfg.taller_id, el('span', { class: 'apagado' }, ' · inscritos por edición: ', Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno'))));
-  const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html`;
+    el('p', {}, el('strong', {}, 'Taller actual: '), cfg.taller_id, el('span', { class: 'apagado' }, ` · contenido ${cfg.contenido}`, ' · inscritos por taller: ', Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno'))));
+  const esDefecto = (estado.talleres.find((tl) => tl.id === cfg.taller_id) || {}).defecto;
+  const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html${esDefecto ? '' : `?taller=${encodeURIComponent(cfg.taller_id)}`}`;
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enlace de inscripción'), el('p', {}, el('a', { href: enlace, target: '_blank' }, enlace)),
+    esDefecto ? null : el('p', { class: 'apagado' }, 'Este taller no es el que abre la dirección sin «?taller=»: el enlace lleva el parámetro. Puedes hacerlo el taller por defecto en «Configuración».'),
     el('button', { class: 'boton secundario peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar')));
 }
 
@@ -297,7 +305,9 @@ function pintarInscritos() {
     const color = i.estado === 'plaza' ? 'gr' : i.estado === 'espera' ? 'ye' : 'rd';
     cuerpo.append(el('tr', {},
       el('td', {}, el('strong', {}, i.numero || '—')),
-      el('td', {}, el('strong', {}, i.nombre), i.veterano ? el('span', { class: 'chip c-ye', style: 'margin-left:6px' }, 'repite') : null, el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
+      el('td', {}, el('strong', {}, i.nombre), ...(i.historial || []).map((h) => el('span', { class: `chip ${h.completado ? 'c-gr' : 'c-ye'}`, style: 'margin-left:6px', title: `${h.edicion} · ${h.medallas} medallas${h.jefe ? ' · jefe' : ''}${h.completado ? '' : ' · sin terminar'}` }, `${h.nivel || h.edicion}${h.completado ? ' ✓' : ''}`)),
+        +cfg.numero_taller > 1 && !(i.historial || []).length ? el('span', { class: 'chip c-rd', style: 'margin-left:6px', title: 'No consta en ningún taller anterior' }, 'sin nivel anterior') : null,
+        el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '', i.estado === 'plaza' && (i.historial || []).some((h) => h.kit === Number(i.numero)) ? ' · mismo caso que antes' : '')),
       el('td', {}, el('small', {}, i.correo, i.telefono ? [el('br'), i.telefono] : null)),
       el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma), ' ',
         i.estado === 'plaza' ? el('span', { class: `chip ${i.personaje !== 'x' && i.genero_kit !== i.personaje ? 'c-rd' : 'c-gr'}`, title: `prefiere: ${NOMBRE_GENERO[i.personaje]}` }, `personaje ${NOMBRE_GENERO[i.genero_kit]}`) : el('small', { class: 'apagado' }, `prefiere ${NOMBRE_GENERO[i.personaje]}`))),
@@ -319,7 +329,7 @@ function accionesInscrito(i) {
     el('p', {}, el('small', {}, 'Enlace personal: '), el('a', { href: i.enlace, target: '_blank', style: 'word-break:break-all' }, i.enlace)),
     el('div', { class: 'botones' },
       el('button', { class: 'boton secundario', onclick: () => navigator.clipboard.writeText(i.enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar enlace'),
-      i.estado === 'plaza' ? el('a', { class: 'boton secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma') : null,
+      i.estado === 'plaza' ? el('a', { class: 'boton secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario', onclick: () => accion({ accion: 'reenviar' }, 'Enlace reenviado por correo') }, icono('LuMail'), 'Reenviar enlace') : null,
       i.estado === 'espera' ? el('button', { class: 'boton c-gr', onclick: () => accion({ accion: 'subir' }, 'Ya tiene plaza') }, icono('LuArrowUp'), 'Darle plaza') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario peligro', onclick: () => accion({ accion: 'cancelar' }, 'Plaza cancelada', `¿Cancelar la inscripción de ${i.nombre}?`) }, 'Cancelar inscripción') : null,
@@ -358,7 +368,7 @@ function pintarDiplomas() {
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Diplomas'),
     el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF.'),
     el('div', { class: 'botones' },
-      lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
+      lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
       el('a', { class: 'boton secundario', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra'))));
   if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay alumnos con plaza.'));
   const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, ''))));
@@ -371,7 +381,7 @@ function pintarDiplomas() {
       el('td', {}, `${i.misiones.length}`),
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
-      el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
+      el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
   tabla.append(cuerpo);
   app.append(el('div', { class: 'tabla-scroll tarjeta' }, tabla));
@@ -382,7 +392,7 @@ function pintarDiplomas() {
 function pintarConfig() {
   const cfg = estado.config;
   const f = el('form', { class: 'tarjeta', novalidate: true });
-  f.append(el('h2', {}, 'Configuración del taller'), el('p', { class: 'sub' }, 'Todo lo que cambia entre ediciones. Se refleja en la app al instante.'));
+  f.append(el('h2', {}, `Configuración de «${cfg.taller_id}»`), el('p', { class: 'sub' }, 'Fecha, lugar, plazas, mensajes y diploma de este taller. Los datos del responsable, el remitente, la dirección de la app y la firma del diploma son comunes a todos los talleres. Se refleja en la app al instante.'));
   const campos = {};
   Object.entries(ETIQUETA_CONFIG).forEach(([k, [etiqueta, tipo]]) => {
     const inp = tipo === 'textarea' ? el('textarea', { name: k }, cfg[k] || '') : el('input', { type: tipo, name: k, value: cfg[k] || '' });
@@ -392,9 +402,15 @@ function pintarConfig() {
   const asig = el('select', { name: 'modo_asignacion' }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar'));
   campos.modo_asignacion = asig;
   f.append(el('label', { class: 'campo' }, el('span', {}, 'Asignación de kits'), asig));
-  const taller = el('select', { name: 'taller_id' }, ...estado.talleres.map((t) => el('option', { value: t, selected: t === cfg.taller_id }, t)));
-  campos.taller_id = taller;
-  f.append(el('label', { class: 'campo' }, el('span', {}, 'Contenido (kits y misiones)'), taller, el('span', { class: 'ayuda' }, `Hay ${estado.contenido.kits_total} kits en el contenido actual. Para el Taller 2 se añadirá otra carpeta en data/.`)));
+  const contenido = el('select', { name: 'contenido' }, ...estado.contenidos.map((c) => el('option', { value: c, selected: c === cfg.contenido }, c)));
+  campos.contenido = contenido;
+  f.append(el('label', { class: 'campo' }, el('span', {}, 'Contenido (kits y misiones)'), contenido, el('span', { class: 'ayuda' }, `Hay ${estado.contenido.kits_total} kits en el contenido actual.`)));
+  const color = el('select', { name: 'color' }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n)));
+  campos.color = color;
+  f.append(el('label', { class: 'campo' }, el('span', {}, 'Color de acento del taller'), color));
+  const defecto = el('select', { name: 'taller_defecto' }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.defecto }, `${tl.id} · ${tl.nombre_taller}`)));
+  campos.taller_defecto = defecto;
+  f.append(el('label', { class: 'campo' }, el('span', {}, 'Taller que abre la dirección de la app sin «?taller=»'), defecto));
   f.append(el('div', { class: 'botones' }, el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra del diploma'), el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1&idioma=pt-BR', target: '_blank' }, icono('LuAward'), 'Muestra en portugués')));
   f.append(el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSave'), 'Guardar configuración'));
   f.addEventListener('submit', (e) => {
@@ -404,6 +420,33 @@ function pintarConfig() {
     guardarConfig(cambios);
   });
   app.append(f);
+  app.append(formularioTallerNuevo());
+}
+
+function formularioTallerNuevo() {
+  const f = el('form', { class: 'tarjeta', novalidate: true });
+  const id = el('input', { type: 'text', placeholder: 'taller2, taller3, taller1-2027…', pattern: '[a-z0-9][a-z0-9_-]{1,30}' });
+  const contenido = el('select', {}, ...estado.contenidos.map((c) => el('option', { value: c }, c)));
+  const fecha = el('input', { type: 'date' });
+  const plazas = el('input', { type: 'number', value: estado.config.plazas || '15' });
+  f.append(el('h2', {}, 'Nuevo taller'), el('p', { class: 'sub' }, 'Cada taller tiene su inscripción, su estado, sus palabras secretas y sus diplomas. Quien ya hizo otro taller conserva su número de caso y su personaje si siguen libres.'),
+    el('label', { class: 'campo' }, el('span', {}, 'Identificador (va en la dirección: index.html?taller=…)'), id),
+    el('label', { class: 'campo' }, el('span', {}, 'Contenido'), contenido, el('span', { class: 'ayuda' }, 'El nombre, el nivel y el color salen del contenido; después puedes cambiarlos.')),
+    el('label', { class: 'campo' }, el('span', {}, 'Fecha (opcional)'), fecha),
+    el('label', { class: 'campo' }, el('span', {}, 'Plazas'), plazas),
+    el('button', { class: 'boton bloque c-gr', type: 'submit' }, icono('LuPlus'), 'Crear taller'));
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nuevo = id.value.trim();
+    if (!/^[a-z0-9][a-z0-9_-]{1,30}$/.test(nuevo)) return toast('Identificador no válido: minúsculas, números, guiones', 'error');
+    try {
+      await post('p_taller_nuevo', { k: clave, id: nuevo, ajustes: { contenido: contenido.value, fecha: fecha.value, plazas: plazas.value } });
+      setTaller(nuevo); guardarLocal('profe_taller', nuevo);
+      toast(`Taller «${nuevo}» creado`);
+      await recargar(false);
+    } catch (err) { toast(err.message, 'error'); }
+  });
+  return f;
 }
 
 /* ───────────── Secretos ───────────── */
@@ -411,7 +454,7 @@ function pintarConfig() {
 function pintarSecretos() {
   const s = estado.secretos;
   const f = el('form', { class: 'tarjeta', novalidate: true });
-  f.append(el('h2', {}, 'Palabras secretas y código del jefe'), el('p', { class: 'sub' }, 'Se guardan en el servidor y nunca se muestran. Escribe solo las que quieras cambiar. Se admiten mayúsculas y tildes indistintamente.'));
+  f.append(el('h2', {}, `Palabras secretas y código del jefe · ${estado.config.taller_id}`), el('p', { class: 'sub' }, 'Son de este taller: cada taller tiene las suyas. Se guardan en el servidor y nunca se muestran. Escribe solo las que quieras cambiar. Se admiten mayúsculas y tildes indistintamente.'));
   const campos = {};
   estado.contenido.medallas.forEach((m) => {
     campos[m.id] = el('input', { type: 'text', autocomplete: 'off', placeholder: s[m.id] ? 'Configurada · escribe para cambiarla' : 'Sin configurar' });
@@ -462,7 +505,7 @@ async function pintarSoluciones() {
 function pintarDatos() {
   const para = el('input', { type: 'email', placeholder: 'tu@correo.es' });
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar el envío de correo'), el('div', { class: 'botones' }, para, el('button', { class: 'boton secundario', onclick: async () => { try { const r = await post('p_prueba_correo', { k: clave, para: para.value }); toast(r.enviado ? 'Correo enviado' : 'No se pudo enviar (¿sin cuota?)', r.enviado ? 'ok' : 'error'); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar prueba'))));
-  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, 'Borrar los datos de esta edición'), el('p', { class: 'sub' }, `Al terminar el taller y entregar los certificados. Borra inscritos, progreso y encuestas de la edición actual (${estado.config.taller_id}); las ediciones anteriores se conservan para reconocer a quien repite. La configuración se mantiene.`),
+  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos, progreso y encuestas de este taller; los demás talleres se conservan para reconocer a quien repite y su caso. La configuración se mantiene. Ojo: si lo borras, sus alumnos dejan de contar como veteranos en los talleres siguientes.`),
     el('button', { class: 'boton peligro', onclick: async () => {
       const texto = window.prompt('Escribe BORRAR para confirmar');
       if (texto === null) return;

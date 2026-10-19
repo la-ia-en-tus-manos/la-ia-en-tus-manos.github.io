@@ -1,4 +1,4 @@
-import { get, post } from './api.js';
+import { get, post, setTaller, tallerDeUrl, aplicarColorTaller } from './api.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, ICONO_MODO } from './ui.js';
 
@@ -8,8 +8,10 @@ let pub = null;
 
 async function iniciar() {
   cargarInicio(app, t('cargando'));
+  setTaller(tallerDeUrl());
   try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
-  document.title = `${t('titulo_1')}${t('titulo_2')}`;
+  aplicarColorTaller(pub.color);
+  document.title = pub.nombre_taller || `${t('titulo_1')}${t('titulo_2')}`;
   pintar();
 }
 
@@ -20,11 +22,19 @@ function selectorIdioma() {
     el('button', { class: `boton peque ${id === idiomaActual() ? '' : 'fantasma'}`, type: 'button', onclick: async () => { setIdioma(id); try { pub = await get('publico'); } catch (e) { /* se queda la anterior */ } pintar(); } }, icono('LuGlobe'), IDIOMAS[id])));
 }
 
+// «La IA en tus manos» → «La IA en » + «tus manos» en color: las dos últimas palabras llevan el acento.
+function tituloTaller(nombre) {
+  if (!nombre) return el('h1', {}, t('titulo_1'), el('span', { class: 'acento' }, t('titulo_2')));
+  const palabras = nombre.trim().split(/\s+/);
+  const corte = Math.max(1, palabras.length - 2);
+  return el('h1', {}, palabras.slice(0, corte).join(' ') + ' ', el('span', { class: 'acento' }, palabras.slice(corte).join(' ')));
+}
+
 function cabecera() {
   return [
     selectorIdioma(),
     pildora(t('pildora_taller', { n: pub.numero_taller, nivel: pub.nivel })),
-    el('h1', {}, t('titulo_1'), el('span', { class: 'acento' }, t('titulo_2'))),
+    tituloTaller(pub.nombre_taller),
     el('p', { class: 'sub' }, t('intro')),
     el('div', { class: 'tarjeta' },
       el('p', { style: 'margin:0' }, icono('LuCalendar', 'inline'), ' ', el('strong', {}, t('cuando')), pub.fecha_legible || t('fecha_por_confirmar')),
@@ -67,6 +77,7 @@ function pintar() {
     app.append(el('p', { class: 'apagado' }, t('quedan', { libres: pub.plazas_libres, total: pub.plazas })));
   }
 
+  if (pub.avisos_inscripcion) app.append(el('div', { class: 'aviso atencion' }, icono('LuInfo', 'inline'), ' ', pub.avisos_inscripcion));
   app.append(formulario(sinPlaza));
   pintarIconos(app);
 }

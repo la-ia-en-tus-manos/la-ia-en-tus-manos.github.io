@@ -2,7 +2,7 @@
 //   certificado.html?t=TOKEN           → el alumno (taller terminado)
 //   certificado.html?id=ID             → el profesor, con su clave en sessionStorage (vista previa de cualquier alumno)
 //   certificado.html?demo=1            → muestra de diseño con datos inventados, sin servidor
-import { get } from './api.js';
+import { get, setTaller } from './api.js';
 import { t, setIdioma, idiomaActual } from './i18n.js';
 import { el, vaciar, icono, pintarIconos, toast } from './ui.js';
 
@@ -70,6 +70,7 @@ async function iniciar() {
       return pintar(d);
     }
     // La clave del profesor llega en el fragmento (#k=…) desde el panel; se guarda en la sesión y se quita de la barra.
+    setTaller(params.get('taller') || '');
     const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
     if (hash.get('k')) { sessionStorage.setItem('profe_clave', hash.get('k')); history.replaceState(null, '', location.pathname + location.search); }
     const k = sessionStorage.getItem('profe_clave') || '';

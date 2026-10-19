@@ -22,6 +22,7 @@
   --or: #FF9D42;
   --rd: #FF6B6B;
   --acento: var(--cy);
+  --primario: var(--cy);
   --cristal: rgba(13, 18, 48, 0.8);
   --borde: rgba(255, 255, 255, 0.16);
   --fondo: url('../assets/fondos/fondo_waves.jpg');
@@ -143,6 +144,15 @@ hr { border: 0; border-top: 1px solid var(--borde); margin: 24px 0; }
 .insignia.peque { width: 40px; height: 40px; border-radius: 12px; }
 .insignia.peque svg { width: 20px; height: 20px; }
 
+/* Color de acento de cada taller: cambia el principal de toda la página (lo fija la app en <html>). */
+html.taller-vi { --cy: #9B82FF; }
+html.taller-bl { --cy: #4DA8FF; }
+html.taller-ye { --cy: #F4C257; }
+html.taller-gr { --cy: #8EE04E; }
+html.taller-pk { --cy: #FF5C9E; }
+html.taller-or { --cy: #FF9D42; }
+html.taller-rd { --cy: #FF6B6B; }
+.selector-taller { max-width: 100%; font-size: 0.85rem; padding: 6px 10px; }
 .c-cy { --acento: var(--cy); }
 .c-bl { --acento: var(--bl); }
 .c-vi { --acento: var(--vi2); }

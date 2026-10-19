@@ -1,4 +1,4 @@
-import { get, post } from './api.js';
+import { get, post, aplicarColorTaller } from './api.js';
 import { REFRESCO_ALUMNO_S } from './config.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import {
@@ -81,6 +81,8 @@ function pintar(conservar = false) {
   });
   app.className = 'pagina';
   document.body.className = '';
+  aplicarColorTaller(estado.config.color);
+  document.title = estado.config.nombre_taller || document.title;
   const a = estado.alumno;
   const fase = estado.config.estado;
   if (a.estado === 'cancelado') return pintarCancelado();
@@ -97,7 +99,7 @@ function cabeceraAlumno() {
   const a = estado.alumno;
   return el('div', { class: 'cabecera-alumno' },
     el('div', {}, el('p', { class: 'sub', style: 'margin:0' }, t('hola', { nombre: a.nombre.split(' ')[0] })), el('h1', { style: 'font-size:1.5rem' }, estado.config.nombre_taller)),
-    el('div', { class: 'numero-explorador', style: 'text-align:right' }, t('explorador'), el('b', {}, t('numero', { n: a.numero })))
+    el('div', { class: 'numero-explorador', style: 'text-align:right' }, estado.config.nivel || t('explorador'), el('b', {}, t('numero', { n: a.numero })))
   );
 }
 
