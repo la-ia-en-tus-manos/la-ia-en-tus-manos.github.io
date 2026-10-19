@@ -152,6 +152,8 @@ html.taller-gr { --cy: #8EE04E; }
 html.taller-pk { --cy: #FF5C9E; }
 html.taller-or { --cy: #FF9D42; }
 html.taller-rd { --cy: #FF6B6B; }
+.tarjeta-taller { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; margin-bottom: 12px; }
+.tarjeta-taller h2 { margin: 8px 0 6px; }
 .talleres-nav { display: grid; gap: 8px; margin-bottom: 16px; }
 .grupo-taller { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--borde); border-radius: 14px; background: var(--cristal); }
 .grupo-titulo { font-weight: 800; min-width: 150px; letter-spacing: 0.02em; }

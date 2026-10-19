@@ -1,6 +1,6 @@
-import { get, post, setTaller, tallerDeUrl, aplicarColorTaller } from './api.js';
+import { get, post, setTaller, tallerDeUrl, tallerActual, aplicarColorTaller } from './api.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
-import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, ICONO_MODO } from './ui.js';
+import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ICONO_MODO } from './ui.js';
 
 const app = document.getElementById('app');
 const cargadoEn = Date.now();
@@ -8,7 +8,7 @@ let pub = null;
 
 async function iniciar() {
   cargarInicio(app, t('cargando'));
-  setTaller(tallerDeUrl());
+  setTaller(tallerDeUrl() || leerLocal('taller_elegido') || '');
   try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
   aplicarColorTaller(pub.color);
   document.title = pub.nombre_taller || `${t('titulo_1')}${t('titulo_2')}`;
@@ -47,10 +47,27 @@ function cabecera() {
 
 function pintar() {
   vaciar(app);
+  // Varios talleres con la inscripción abierta a la vez: si la dirección no dice cuál, se elige primero.
+  const elegido = tallerDeUrl() || leerLocal('taller_elegido');
+  if (pub.abiertos && pub.abiertos.length && !elegido) {
+    app.append(selectorIdioma(), pildora(t('elige_taller_pildora')), el('h1', {}, t('elige_taller')), el('p', { class: 'sub' }, t('elige_taller_txt')));
+    const todos = [pub.abierta ? { taller_id: pub.taller_id, nombre_taller: pub.nombre_taller, nivel: pub.nivel, numero_taller: pub.numero_taller, color: pub.color, fecha_legible: pub.fecha_legible, lugar: pub.lugar, plazas_libres: pub.plazas_libres } : null, ...pub.abiertos].filter(Boolean);
+    todos.sort((a, b) => +a.numero_taller - +b.numero_taller).forEach((tl) => app.append(el('button', { class: `tarjeta tinte c-${tl.color || 'cy'} tarjeta-taller`, onclick: async () => {
+      setTaller(tl.taller_id); guardarLocal('taller_elegido', tl.taller_id); history.replaceState(null, '', `?taller=${encodeURIComponent(tl.taller_id)}`);
+      cargarInicio(app, t('cargando'));
+      try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
+      aplicarColorTaller(pub.color); pintar();
+    } },
+      pildora(t('pildora_taller', { n: tl.numero_taller, nivel: tl.nivel }), tl.color || 'cy'), el('h2', {}, tl.nombre_taller),
+      el('p', { class: 'sub', style: 'margin:0' }, icono('LuCalendar', 'inline'), ' ', tl.fecha_legible || t('fecha_por_confirmar'), tl.lugar ? ` · ${tl.lugar}` : ''),
+      el('p', { class: 'apagado', style: 'margin:6px 0 0' }, t('quedan_n', { n: tl.plazas_libres })))));
+    return pintarIconos(app);
+  }
   app.append(...cabecera().filter(Boolean));
+  if (pub.abiertos && pub.abiertos.length) app.append(el('p', { class: 'apagado' }, t('otros_abiertos'), ' ', ...pub.abiertos.map((tl, i) => [i ? ' · ' : '', el('a', { href: `?taller=${encodeURIComponent(tl.taller_id)}`, onclick: (e) => { e.preventDefault(); borrarLocal('taller_elegido'); setTaller(tl.taller_id); guardarLocal('taller_elegido', tl.taller_id); history.replaceState(null, '', `?taller=${encodeURIComponent(tl.taller_id)}`); iniciar(); } }, tl.nombre_taller)])));
 
   const guardado = leerLocal('taller_token');
-  if (guardado && guardado.token) {
+  if (guardado && guardado.token && (guardado.taller || 'taller1') === pub.taller_id) {
     app.append(el('div', { class: 'aviso' },
       el('p', { style: 'margin:0 0 10px' }, t('ya_inscrito_aqui')),
       el('a', { class: 'boton bloque', href: `alumno.html?t=${encodeURIComponent(guardado.token)}` }, t('abrir_enlace'))

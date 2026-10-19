@@ -30,7 +30,7 @@ async function cargar(silencioso = false) {
   if (!silencioso) cargarInicio(app, t('cargando'));
   try {
     estado = await get('alumno', { t: token });
-    guardarLocal('taller_token', { token });
+    guardarLocal('taller_token', { token, taller: estado.config.taller_id });
     if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}`);
   } catch (e) {
     if (e.codigo === 404) borrarLocal('taller_token');
