@@ -622,7 +622,7 @@ function formularioCierre() {
   const a = estado.alumno;
   const c = estado.contenido;
   const f = el('form', { class: 'tarjeta', novalidate: true });
-  const escala = (nombre, desde, hasta, etiquetas) => el('div', { class: 'opciones escala', style: `grid-template-columns:repeat(${Math.min(6, hasta - desde + 1)},1fr)` }, ...Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i).map((n) =>
+  const escala = (nombre, desde, hasta, etiquetas) => el('div', { class: 'opciones escala', style: `grid-template-columns:repeat(${Math.min(5, hasta - desde + 1)},1fr)` }, ...Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i).map((n) =>
     el('label', { class: 'opcion', style: 'justify-content:center;padding:10px 4px', title: etiquetas ? etiquetas[n] || '' : '' }, el('input', { type: 'radio', name: nombre, value: n }), el('strong', { style: 'font-size:1.3rem' }, n))));
   const valoracion = (clave) => el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t(`val_${clave}`)), escala(clave, 1, 5),
     el('div', { class: 'escala-pies' }, el('span', {}, t('val_min')), el('span', {}, t('val_max'))));
