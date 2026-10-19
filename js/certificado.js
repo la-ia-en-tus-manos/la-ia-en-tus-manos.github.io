@@ -102,10 +102,11 @@ function pintar(d, contenedor = diploma) {
       el('div', { class: 'dip-fecha' }, d.textos.lugar ? `${d.textos.lugar}, ` : '', el('b', {}, d.fecha_legible || t('fecha_por_confirmar_t'))),
       el('div', { class: 'dip-firma' }, d.textos.firma_url ? el('img', { class: 'dip-rubrica-img', src: d.textos.firma_url, alt: '' }) : rubrica(d.textos.firmante), el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
   );
-  vaciar(acciones).append(
+  // append() nativo pinta «null» como texto: solo nodos reales.
+  vaciar(acciones).append(...[
     el('button', { class: 'boton', onclick: () => window.print() }, icono('LuPrinter'), t('dip_imprimir')),
     params.has('demo') ? el('span', { class: 'chip c-ye', style: 'align-self:center' }, t('dip_demo')) : null
-  );
+  ].filter(Boolean));
   pintarIconos(document.body);
 }
 
