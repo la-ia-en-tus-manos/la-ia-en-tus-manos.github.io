@@ -14,14 +14,14 @@ let audio = null;             // AudioContext, solo tras un gesto del usuario
 const TITULO_BASE = document.title;
 
 const ETIQUETA_CONFIG = {
-  nombre_taller: ['Nombre del taller', 'text'], numero_taller: ['Número de taller', 'text'], nivel: ['Nivel', 'text'],
+  nombre_taller: ['Nombre del taller', 'text'], nombre_taller_pt: ['Nombre del taller · en portugués', 'text'], numero_taller: ['Número de taller', 'text'], nivel: ['Nivel', 'text'], nivel_pt: ['Nivel · en portugués', 'text'],
   fecha: ['Fecha', 'date'], hora_inicio: ['Hora de inicio', 'time'], duracion_min: ['Duración (minutos)', 'number'],
   lugar: ['Lugar', 'text'], direccion: ['Dirección', 'text'], mapa_url: ['Enlace al mapa', 'url'],
   plazas: ['Plazas', 'number'], kits_activos: ['Kits activos', 'number'], max_espera: ['Máximo en lista de espera', 'number'],
   mensaje_espera: ['Mensaje en la pantalla de espera', 'textarea'], pista_caso: ['Pista del caso bloqueado', 'textarea'],
   whatsapp_url: ['Enlace del grupo de WhatsApp', 'url'],
   responsable_nombre: ['Responsable de los datos (nombre o entidad)', 'text'], responsable_correo: ['Correo de contacto para privacidad', 'email'],
-  remitente_nombre: ['Nombre del remitente de los correos', 'text'], retencion_texto: ['Texto sobre cuánto tiempo se guardan los datos', 'textarea'],
+  remitente_nombre: ['Nombre del remitente de los correos', 'text'], remitente_nombre_pt: ['Remitente de los correos · en portugués', 'text'], retencion_texto: ['Texto sobre cuánto tiempo se guardan los datos', 'textarea'],
   url_app: ['Dirección pública de la app (para los enlaces de los correos)', 'url'],
   mensaje_espera_pt: ['Mensaje en la pantalla de espera · en portugués (vacío = se usa el español)', 'textarea'],
   pista_caso_pt: ['Pista del caso bloqueado · en portugués', 'textarea'],
@@ -459,10 +459,10 @@ async function pintarEncuestas() {
 
 const SECCIONES_CONFIG = [
   ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
-  ['Nombre y contenido', ['nombre_taller', 'numero_taller', 'nivel', 'contenido', 'color', 'taller_defecto'], false],
+  ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto'], false],
   ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
   ['Diploma', ['certificado_titulo', 'certificado_texto', 'certificado_titulo_pt', 'certificado_texto_pt'], false],
-  ['Comunes a todos los talleres', ['responsable_nombre', 'responsable_correo', 'remitente_nombre', 'retencion_texto', 'retencion_texto_pt', 'url_app', 'certificado_firmante', 'certificado_firmante_cargo', 'certificado_firmante_cargo_pt', 'certificado_lugar', 'certificado_logo_url', 'certificado_firma_url'], false]
+  ['Comunes a todos los talleres', ['responsable_nombre', 'responsable_correo', 'remitente_nombre', 'remitente_nombre_pt', 'retencion_texto', 'retencion_texto_pt', 'url_app', 'certificado_firmante', 'certificado_firmante_cargo', 'certificado_firmante_cargo_pt', 'certificado_lugar', 'certificado_logo_url', 'certificado_firma_url'], false]
 ];
 
 function campoConfig(k, cfg) {
