@@ -461,7 +461,7 @@ async function pintarEncuestas() {
 
 const SECCIONES_CONFIG = [
   ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
-  ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto'], false],
+  ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto', 'exigir_niveles'], false],
   ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
   ['Diploma', ['certificado_titulo', 'certificado_texto', 'certificado_titulo_pt', 'certificado_texto_pt'], false],
   ['Comunes a todos los talleres', ['responsable_nombre', 'responsable_correo', 'remitente_nombre', 'remitente_nombre_pt', 'retencion_texto', 'retencion_texto_pt', 'url_app', 'certificado_firmante', 'certificado_firmante_cargo', 'certificado_firmante_cargo_pt', 'certificado_lugar', 'certificado_logo_url', 'certificado_firma_url'], false]
@@ -470,6 +470,7 @@ const SECCIONES_CONFIG = [
 function campoConfig(k, cfg) {
   if (k === 'modo_asignacion') return [el('select', { name: k }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar')), 'Asignación de kits'];
   if (k === 'contenido') return [el('select', { name: k }, ...estado.contenidos.map((c) => el('option', { value: c.id, selected: c.id === cfg.contenido }, `${c.id} · ${c.nombre} (${c.nivel})`))), 'Contenido (kits y misiones)', `Hay ${estado.contenido.kits_total} kits en el contenido actual.`];
+  if (k === 'exigir_niveles') return [el('select', { name: k }, el('option', { value: '1', selected: cfg.exigir_niveles !== '0' }, 'Sí: para el taller N hay que haber hecho los anteriores (misma dirección de correo, edición terminada)'), el('option', { value: '0', selected: cfg.exigir_niveles === '0' }, 'No: puede apuntarse cualquiera')), 'Exigir los niveles anteriores'];
   if (k === 'color') return [el('select', { name: k }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n))), 'Color de acento'];
   if (k === 'taller_defecto') return [el('select', { name: k }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.defecto }, `${tl.id} · ${tl.nombre_taller}`))), 'Taller que abre la dirección de la app sin «?taller=»'];
   const [etiqueta, tipo] = ETIQUETA_CONFIG[k];

@@ -40,7 +40,7 @@ function cabecera() {
     selectorIdioma(),
     pildora(t('pildora_taller', { n: pub.numero_taller, nivel: pub.nivel })),
     tituloTaller(pub.nombre_taller),
-    el('p', { class: 'sub' }, t('intro')),
+    el('p', { class: 'sub' }, pub.intro || t('intro')),
     el('div', { class: 'tarjeta' },
       el('p', { style: 'margin:0' }, icono('LuCalendar', 'inline'), ' ', el('strong', {}, t('cuando')), pub.fecha_legible || t('fecha_por_confirmar')),
       pub.lugar ? el('p', { style: 'margin:8px 0 0' }, el('strong', {}, t('donde')), pub.lugar, pub.direccion ? `, ${pub.direccion}` : '',
@@ -99,6 +99,7 @@ function pintar() {
     app.append(el('p', { class: 'apagado' }, t('quedan', { libres: pub.plazas_libres, total: pub.plazas })));
   }
 
+  if (+pub.numero_taller > 1 && pub.exigir_niveles === '1') app.append(el('div', { class: 'aviso atencion' }, icono('LuInfo', 'inline'), ' ', t(+pub.numero_taller === 2 ? 'requisito_1' : 'requisito_12')));
   if (pub.avisos_inscripcion) app.append(el('div', { class: 'aviso atencion' }, icono('LuInfo', 'inline'), ' ', pub.avisos_inscripcion));
   app.append(formulario(sinPlaza));
   pintarIconos(app);
@@ -155,6 +156,7 @@ function formulario(esEspera) {
       pintarIconos(app);
     } catch (err) {
       mostrarError(aviso, err.message);
+      if (err.codigo === 412) aviso.append(el('div', { style: 'margin-top:10px' }, el('a', { class: 'boton secundario peque', href: window.TALLER_FIJO ? '../' : './' }, icono('LuArrowLeft'), t('ver_talleres'))));
       boton.disabled = false;
       boton.textContent = esEspera ? t('apuntarme_espera') : t('apuntarme');
     }
