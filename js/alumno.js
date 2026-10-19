@@ -336,6 +336,16 @@ function pintarTaller() {
   mapa.append(lista);
   app.append(mapa);
 
+  // Cierre desde el mapa: con todas las misiones hechas (o el jefe validado), la encuesta ya está aquí,
+  // sin esperar a que el profesor ponga el taller en «Terminado». El diploma se abre entonces.
+  const todas = prog.misiones.length >= c.misiones.length - 1 || estado.alumno.jefe;
+  if (estado.encuesta_hecha) {
+    app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, estado.alumno.nombre_certificado || estado.alumno.nombre), '. ', t('diploma_al_terminar')));
+  } else if (todas) {
+    app.append(el('div', { class: 'tarjeta tinte c-gr' }, pildora(t('has_terminado'), 'gr'), el('h2', {}, t('cierre_titulo')), el('p', { class: 'sub' }, t('cierre_mapa_txt'))));
+    app.append(formularioCierre());
+  }
+
   if (prog.misiones.includes('M8')) {
     app.append(el('div', { class: 'tarjeta c-vi' }, pildora(t('extra'), 'vi'), el('h2', {}, t('sobra_tiempo')),
       ...c.misiones_extra.map((m) => tarjetaPrompt(m.titulo, m.prompt, 'vi'))));
