@@ -336,9 +336,10 @@ function pintarTaller() {
   mapa.append(lista);
   app.append(mapa);
 
-  // Cierre desde el mapa: con todas las misiones hechas (o el jefe validado), la encuesta ya está aquí,
+  // Cierre desde el mapa: con todas las misiones hechas, la encuesta ya está aquí,
   // sin esperar a que el profesor ponga el taller en «Terminado». El diploma se abre entonces.
-  const todas = prog.misiones.length >= c.misiones.length - 1 || estado.alumno.jefe;
+  // Todas las misiones con sello (el jefe final no basta por sí solo): si se quita un sello, el cierre desaparece.
+  const todas = c.misiones.filter((m) => m.id !== 'JEFE').every((m) => prog.misiones.includes(m.id));
   if (estado.encuesta_hecha) {
     app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, estado.alumno.nombre_certificado || estado.alumno.nombre), '. ', t('diploma_al_terminar')));
   } else if (todas) {
