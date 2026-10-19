@@ -71,12 +71,11 @@ function pintar() {
   const cfg = estado.config;
   aplicarColorTaller(cfg.color);
   if (tallerActual() !== cfg.taller_id) { setTaller(cfg.taller_id); guardarLocal('profe_taller', cfg.taller_id); }
-  const selectorTaller = el('select', { class: 'selector-taller', title: 'Taller que estás gestionando' }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.id === cfg.taller_id }, `${tl.id} · ${tl.nombre_taller} (${tl.nivel}) · ${NOMBRE_ESTADO[tl.estado] || tl.estado}`)));
-  selectorTaller.addEventListener('change', async () => { setTaller(selectorTaller.value); guardarLocal('profe_taller', selectorTaller.value); await recargar(false); });
   app.append(el('div', { class: 'cabecera-alumno' },
-    el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller), estado.talleres.length > 1 ? el('div', { style: 'margin-top:8px' }, selectorTaller) : null),
+    el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller, el('span', { class: 'apagado', style: 'font-size:0.9rem;font-weight:400;margin-left:10px' }, cfg.taller_id))),
     el('div', { style: 'text-align:right' }, el('span', { class: `chip c-${cfg.estado === 'taller_en_curso' ? 'gr' : cfg.estado === 'inscripcion_abierta' ? 'cy' : 'ye'}` }, NOMBRE_ESTADO[cfg.estado]), el('br'),
       el('button', { class: 'boton fantasma peque', style: 'margin-top:8px', onclick: () => { clave = ''; sessionStorage.removeItem('profe_clave'); pintarAcceso(); } }, 'Salir'))));
+  app.append(navegacionTalleres(cfg));
   const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['encuestas', 'Encuestas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
   app.append(el('div', { class: 'pestanas' }, ...pestanas.map(([id, nombre]) => el('button', { class: id === pestana ? 'activa' : '', onclick: () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); } }, nombre))));
   ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, encuestas: pintarEncuestas, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
@@ -89,38 +88,72 @@ function pintarInicio() {
   const cfg = estado.config;
   const oc = estado.ocupacion;
   const plazas = Math.min(+cfg.plazas, +cfg.kits_activos);
+  const esDefecto = (estado.talleres.find((tl) => tl.id === cfg.taller_id) || {}).defecto;
+  const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html${esDefecto ? '' : `?taller=${encodeURIComponent(cfg.taller_id)}`}`;
+  const faltanSecretos = estado.contenido.medallas.some((m) => !estado.secretos[m.id]) || !estado.secretos.jefe;
+  const ir = (id) => () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); window.scrollTo(0, 0); };
+  const selector = el('select', {}, ...estado.estados.map((s) => el('option', { value: s, selected: s === cfg.estado }, NOMBRE_ESTADO[s])));
+  const dato = (titulo, ...cuerpo) => el('div', { class: 'ficha-dato' }, el('small', {}, titulo), el('div', {}, ...cuerpo));
+  app.append(el('div', { class: 'tarjeta ficha-taller' },
+    dato('Estado', el('div', { class: 'botones', style: 'margin:0' }, selector, el('button', { class: 'boton peque', onclick: () => guardarConfig({ estado: selector.value }) }, 'Cambiar')),
+      el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Hasta «Taller en curso» los alumnos no reciben su caso.')),
+    dato('Cuándo y dónde', el('b', {}, cfg.fecha ? `${cfg.fecha}${cfg.hora_inicio ? ` · ${cfg.hora_inicio}` : ''}` : 'Sin fecha'), el('br'), cfg.lugar || el('span', { class: 'apagado' }, 'Sin lugar'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'cambiar')),
+    dato('Plazas', el('b', {}, `${oc.plaza} de ${plazas}`), ` ocupadas · ${oc.espera} en espera (máx. ${cfg.max_espera})`, el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'ver inscritos')),
+    dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados')),
+    dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
+      esDefecto ? null : el('div', { class: 'apagado', style: 'font-size:0.85rem' }, 'Lleva «?taller=» porque no es el taller por defecto (Configuración → Nombre y contenido).')),
+    dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos'))));
+
+  const avisos = [];
+  if (!cfg.url_app) avisos.push(['atencion', 'Falta la dirección pública de la app: los correos no llevarán enlace completo. Configuración → Comunes a todos los talleres.']);
+  if (!estado.imagenes_ok) avisos.push(['error', 'No hay carpeta de imágenes configurada: ejecuta configurarInicial() en Apps Script.']);
+  avisos.forEach(([tipo, texto]) => app.append(el('div', { class: `aviso ${tipo}` }, texto)));
+
   app.append(el('div', { class: 'rejilla' },
     el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, `${oc.plaza}/${plazas}`), el('small', {}, 'plazas ocupadas')),
     el('div', { class: 'tarjeta kpi c-ye' }, el('b', {}, `${oc.espera}/${cfg.max_espera}`), el('small', {}, 'en lista de espera')),
     el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, estado.inscritos.filter((i) => i.estado === 'plaza' && i.previas === i.previas_total).length), el('small', {}, 'preparados del todo')),
-    el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.cuota_correo), el('small', {}, 'correos disponibles hoy'))));
+    el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
+}
 
-  const avisos = [];
-  if (estado.contenido.medallas.some((m) => !estado.secretos[m.id]) || !estado.secretos.jefe) avisos.push(['atencion', 'Faltan palabras secretas o el código del jefe final de este taller. Pestaña «Secretos».']);
-  if (!cfg.url_app) avisos.push(['atencion', 'Falta la dirección pública de la app: los correos no llevarán enlace completo. Pestaña «Configuración».']);
-  if (!estado.imagenes_ok) avisos.push(['error', 'No hay carpeta de imágenes configurada: ejecuta configurarInicial() en Apps Script.']);
-  if (!cfg.fecha) avisos.push(['', 'Sin fecha: los alumnos ven «por confirmar». Cuando la pongas, avísales desde «Inscritos».']);
-  avisos.forEach(([tipo, texto]) => app.append(el('div', { class: `aviso ${tipo}` }, texto)));
+// Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.
+function navegacionTalleres(cfg) {
+  const grupos = estado.contenidos.map((c) => ({ ...c, ediciones: estado.talleres.filter((tl) => tl.contenido === c.id) }));
+  const sueltos = estado.talleres.filter((tl) => !estado.contenidos.some((c) => c.id === tl.contenido));
+  if (sueltos.length) grupos.push({ id: '', numero: '?', nivel: 'otros', ediciones: sueltos });
+  return el('div', { class: 'talleres-nav' }, ...grupos.map((g) => el('div', { class: 'grupo-taller' },
+    el('div', { class: 'grupo-titulo' }, `Taller ${g.numero}`, el('span', {}, ` · ${g.nivel}`)),
+    el('div', { class: 'ediciones' },
+      ...g.ediciones.map((tl) => el('button', { class: `edicion ${tl.id === cfg.taller_id ? 'activa' : ''}`, title: `${tl.nombre_taller} · ${NOMBRE_ESTADO[tl.estado] || tl.estado}`, onclick: async () => { if (tl.id === cfg.taller_id) return; setTaller(tl.id); guardarLocal('profe_taller', tl.id); await recargar(false); } },
+        tl.id, el('small', {}, NOMBRE_ESTADO[tl.estado] || tl.estado), tl.defecto ? el('small', { class: 'defecto' }, '· por defecto') : null)),
+      g.id ? el('button', { class: 'edicion nueva', onclick: () => modalNuevoTaller(g) }, icono('LuPlus'), g.ediciones.length ? 'Otra edición' : 'Crear') : null))));
+}
 
-  const selector = el('select', {}, ...estado.estados.map((s) => el('option', { value: s, selected: s === cfg.estado }, NOMBRE_ESTADO[s])));
-  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Estado del taller'),
-    el('p', { class: 'sub' }, 'Hasta «Taller en curso» los alumnos no reciben su caso. En «Terminado» solo queda el cierre.'),
-    el('div', { class: 'botones' }, selector, el('button', { class: 'boton', onclick: () => guardarConfig({ estado: selector.value }) }, 'Cambiar estado'))));
-
-  const v = estado.version || {};
-  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Versiones en marcha'),
-    el('p', {}, el('strong', {}, 'Backend (Apps Script): '), `${v.version || '?'} · ${v.fecha || 'fecha desconocida'}`, v.commit ? ` · commit ${v.commit}` : '', v.descripcion ? el('span', { class: 'apagado' }, ` · ${v.descripcion}`) : null),
-    el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`),
-    el('p', {}, el('strong', {}, 'Taller actual: '), cfg.taller_id, el('span', { class: 'apagado' }, ` · contenido ${cfg.contenido}`, ' · inscritos por taller: ', Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno'))));
-  const esDefecto = (estado.talleres.find((tl) => tl.id === cfg.taller_id) || {}).defecto;
-  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Talleres'),
-    el('p', { class: 'sub' }, 'Cada taller tiene su inscripción, su estado, sus secretos y sus diplomas. Cambia de taller con el selector de arriba; crea otro desde «Configuración → Nuevo taller».'),
-    el('ul', { style: 'padding-left:20px;margin:0 0 12px' }, ...estado.talleres.map((tl) => el('li', {}, el('strong', {}, tl.id), ` · ${tl.nombre_taller} (${tl.nivel}) · ${NOMBRE_ESTADO[tl.estado] || tl.estado}`, tl.defecto ? el('span', { class: 'chip c-cy', style: 'margin-left:6px' }, 'por defecto') : null))),
-    el('button', { class: 'boton secundario c-gr', onclick: () => { pestana = 'config'; guardarLocal('profe_pestana', 'config'); pintar(); window.scrollTo(0, 0); } }, icono('LuPlus'), 'Nuevo taller')));
-  const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html${esDefecto ? '' : `?taller=${encodeURIComponent(cfg.taller_id)}`}`;
-  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enlace de inscripción'), el('p', {}, el('a', { href: enlace, target: '_blank' }, enlace)),
-    esDefecto ? null : el('p', { class: 'apagado' }, 'Este taller no es el que abre la dirección sin «?taller=»: el enlace lleva el parámetro. Puedes hacerlo el taller por defecto en «Configuración».'),
-    el('button', { class: 'boton secundario peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar')));
+function modalNuevoTaller(contenido) {
+  const usados = estado.talleres.map((tl) => tl.id);
+  let sugerido = contenido.id;
+  for (let n = 2; usados.includes(sugerido); n++) sugerido = `${contenido.id}-${n}`;
+  const id = el('input', { type: 'text', value: sugerido, pattern: '[a-z0-9][a-z0-9_-]{1,30}' });
+  const fecha = el('input', { type: 'date' });
+  const plazas = el('input', { type: 'number', value: estado.config.plazas || '15' });
+  const f = el('form', { novalidate: true },
+    el('label', { class: 'campo' }, el('span', {}, 'Identificador (va en la dirección: index.html?taller=…)'), id),
+    el('label', { class: 'campo' }, el('span', {}, 'Fecha (opcional)'), fecha),
+    el('label', { class: 'campo' }, el('span', {}, 'Plazas'), plazas),
+    el('button', { class: 'boton bloque c-gr', type: 'submit' }, icono('LuPlus'), 'Crear'));
+  const { cerrar } = modal([el('h2', {}, `Nuevo taller ${contenido.numero} · ${contenido.nivel}`), el('p', { class: 'apagado' }, `Contenido «${contenido.nombre}». Tendrá su inscripción, su estado, sus secretos y sus diplomas. Quien ya hizo otro taller conserva su número de caso y su personaje si siguen libres.`), f]);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nuevo = id.value.trim();
+    if (!/^[a-z0-9][a-z0-9_-]{1,30}$/.test(nuevo)) return toast('Identificador no válido: minúsculas, números, guiones', 'error');
+    try {
+      await post('p_taller_nuevo', { k: clave, id: nuevo, ajustes: { contenido: contenido.id, fecha: fecha.value, plazas: plazas.value } });
+      cerrar();
+      setTaller(nuevo); guardarLocal('profe_taller', nuevo);
+      toast(`Taller «${nuevo}» creado`);
+      await recargar(false);
+    } catch (err) { toast(err.message, 'error'); }
+  });
 }
 
 async function guardarConfig(cambios) {
@@ -424,64 +457,46 @@ async function pintarEncuestas() {
 
 /* ───────────── Configuración ───────────── */
 
+const SECCIONES_CONFIG = [
+  ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
+  ['Nombre y contenido', ['nombre_taller', 'numero_taller', 'nivel', 'contenido', 'color', 'taller_defecto'], false],
+  ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
+  ['Diploma', ['certificado_titulo', 'certificado_texto', 'certificado_titulo_pt', 'certificado_texto_pt'], false],
+  ['Comunes a todos los talleres', ['responsable_nombre', 'responsable_correo', 'remitente_nombre', 'retencion_texto', 'retencion_texto_pt', 'url_app', 'certificado_firmante', 'certificado_firmante_cargo', 'certificado_firmante_cargo_pt', 'certificado_lugar', 'certificado_logo_url', 'certificado_firma_url'], false]
+];
+
+function campoConfig(k, cfg) {
+  if (k === 'modo_asignacion') return [el('select', { name: k }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar')), 'Asignación de kits'];
+  if (k === 'contenido') return [el('select', { name: k }, ...estado.contenidos.map((c) => el('option', { value: c.id, selected: c.id === cfg.contenido }, `${c.id} · ${c.nombre} (${c.nivel})`))), 'Contenido (kits y misiones)', `Hay ${estado.contenido.kits_total} kits en el contenido actual.`];
+  if (k === 'color') return [el('select', { name: k }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n))), 'Color de acento'];
+  if (k === 'taller_defecto') return [el('select', { name: k }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.defecto }, `${tl.id} · ${tl.nombre_taller}`))), 'Taller que abre la dirección de la app sin «?taller=»'];
+  const [etiqueta, tipo] = ETIQUETA_CONFIG[k];
+  return [tipo === 'textarea' ? el('textarea', { name: k }, cfg[k] || '') : el('input', { type: tipo, name: k, value: cfg[k] || '' }), etiqueta];
+}
+
 function pintarConfig() {
   const cfg = estado.config;
-  const f = el('form', { class: 'tarjeta', novalidate: true });
-  f.append(el('h2', {}, `Configuración de «${cfg.taller_id}»`), el('p', { class: 'sub' }, 'Fecha, lugar, plazas, mensajes y diploma de este taller. Los datos del responsable, el remitente, la dirección de la app y la firma del diploma son comunes a todos los talleres. Se refleja en la app al instante.'));
+  const f = el('form', { novalidate: true });
   const campos = {};
-  Object.entries(ETIQUETA_CONFIG).forEach(([k, [etiqueta, tipo]]) => {
-    const inp = tipo === 'textarea' ? el('textarea', { name: k }, cfg[k] || '') : el('input', { type: tipo, name: k, value: cfg[k] || '' });
-    campos[k] = inp;
-    f.append(el('label', { class: 'campo' }, el('span', {}, etiqueta), inp));
+  f.append(el('p', { class: 'sub', style: 'margin:0 0 12px' }, `Configuración de «${cfg.taller_id}». Abre cada apartado; un solo «Guardar» para todo. Se refleja en la app al instante.`));
+  SECCIONES_CONFIG.forEach(([titulo, claves, abierta]) => {
+    const det = el('details', { class: 'tarjeta seccion-config', open: abierta || undefined }, el('summary', {}, titulo));
+    claves.forEach((k) => {
+      const [inp, etiqueta, ayuda] = campoConfig(k, cfg);
+      campos[k] = inp;
+      det.append(el('label', { class: 'campo' }, el('span', {}, etiqueta), inp, ayuda ? el('span', { class: 'ayuda' }, ayuda) : null));
+    });
+    if (titulo === 'Diploma') det.append(el('div', { class: 'botones' }, el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra del diploma'), el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1&idioma=pt-BR', target: '_blank' }, icono('LuAward'), 'Muestra en portugués')));
+    f.append(det);
   });
-  const asig = el('select', { name: 'modo_asignacion' }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar'));
-  campos.modo_asignacion = asig;
-  f.append(el('label', { class: 'campo' }, el('span', {}, 'Asignación de kits'), asig));
-  const contenido = el('select', { name: 'contenido' }, ...estado.contenidos.map((c) => el('option', { value: c, selected: c === cfg.contenido }, c)));
-  campos.contenido = contenido;
-  f.append(el('label', { class: 'campo' }, el('span', {}, 'Contenido (kits y misiones)'), contenido, el('span', { class: 'ayuda' }, `Hay ${estado.contenido.kits_total} kits en el contenido actual.`)));
-  const color = el('select', { name: 'color' }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n)));
-  campos.color = color;
-  f.append(el('label', { class: 'campo' }, el('span', {}, 'Color de acento del taller'), color));
-  const defecto = el('select', { name: 'taller_defecto' }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.defecto }, `${tl.id} · ${tl.nombre_taller}`)));
-  campos.taller_defecto = defecto;
-  f.append(el('label', { class: 'campo' }, el('span', {}, 'Taller que abre la dirección de la app sin «?taller=»'), defecto));
-  f.append(el('div', { class: 'botones' }, el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra del diploma'), el('a', { class: 'boton secundario c-ye', href: 'certificado.html?demo=1&idioma=pt-BR', target: '_blank' }, icono('LuAward'), 'Muestra en portugués')));
-  f.append(el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSave'), 'Guardar configuración'));
+  f.append(el('div', { class: 'guardar-fijo' }, el('button', { class: 'boton grande bloque', type: 'submit' }, icono('LuSave'), 'Guardar configuración')));
   f.addEventListener('submit', (e) => {
     e.preventDefault();
     const cambios = {};
     Object.entries(campos).forEach(([k, inp]) => { cambios[k] = inp.value; });
     guardarConfig(cambios);
   });
-  app.append(formularioTallerNuevo());
   app.append(f);
-}
-
-function formularioTallerNuevo() {
-  const f = el('form', { class: 'tarjeta', novalidate: true });
-  const id = el('input', { type: 'text', placeholder: 'taller2, taller3, taller1-2027…', pattern: '[a-z0-9][a-z0-9_-]{1,30}' });
-  const contenido = el('select', {}, ...estado.contenidos.map((c) => el('option', { value: c }, c)));
-  const fecha = el('input', { type: 'date' });
-  const plazas = el('input', { type: 'number', value: estado.config.plazas || '15' });
-  f.append(el('h2', {}, 'Nuevo taller'), el('p', { class: 'sub' }, 'Cada taller tiene su inscripción, su estado, sus palabras secretas y sus diplomas. Quien ya hizo otro taller conserva su número de caso y su personaje si siguen libres.'),
-    el('label', { class: 'campo' }, el('span', {}, 'Identificador (va en la dirección: index.html?taller=…)'), id),
-    el('label', { class: 'campo' }, el('span', {}, 'Contenido'), contenido, el('span', { class: 'ayuda' }, 'El nombre, el nivel y el color salen del contenido; después puedes cambiarlos.')),
-    el('label', { class: 'campo' }, el('span', {}, 'Fecha (opcional)'), fecha),
-    el('label', { class: 'campo' }, el('span', {}, 'Plazas'), plazas),
-    el('button', { class: 'boton bloque c-gr', type: 'submit' }, icono('LuPlus'), 'Crear taller'));
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nuevo = id.value.trim();
-    if (!/^[a-z0-9][a-z0-9_-]{1,30}$/.test(nuevo)) return toast('Identificador no válido: minúsculas, números, guiones', 'error');
-    try {
-      await post('p_taller_nuevo', { k: clave, id: nuevo, ajustes: { contenido: contenido.value, fecha: fecha.value, plazas: plazas.value } });
-      setTaller(nuevo); guardarLocal('profe_taller', nuevo);
-      toast(`Taller «${nuevo}» creado`);
-      await recargar(false);
-    } catch (err) { toast(err.message, 'error'); }
-  });
-  return f;
 }
 
 /* ───────────── Secretos ───────────── */
@@ -550,6 +565,11 @@ function pintarGuia(guia, k) {
 /* ───────────── Datos ───────────── */
 
 function pintarDatos() {
+  const v = estado.version || {};
+  app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Versiones en marcha'),
+    el('p', {}, el('strong', {}, 'Backend (Apps Script): '), `${v.version || '?'} · ${v.fecha || 'fecha desconocida'}`, v.commit ? ` · commit ${v.commit}` : '', v.descripcion ? el('span', { class: 'apagado' }, ` · ${v.descripcion}`) : null),
+    el('p', {}, el('strong', {}, 'Web (GitHub Pages): '), `${VERSION_APP.fecha} · commit ${VERSION_APP.commit}`),
+    el('p', {}, el('strong', {}, 'Inscritos por taller: '), Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno')));
   const para = el('input', { type: 'email', placeholder: 'tu@correo.es' });
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar el envío de correo'), el('div', { class: 'botones' }, para, el('button', { class: 'boton secundario', onclick: async () => { try { const r = await post('p_prueba_correo', { k: clave, para: para.value }); toast(r.enviado ? 'Correo enviado' : 'No se pudo enviar (¿sin cuota?)', r.enviado ? 'ok' : 'error'); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar prueba'))));
   app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos, progreso y encuestas de este taller; los demás talleres se conservan para reconocer a quien repite y su caso. La configuración se mantiene. Ojo: si lo borras, sus alumnos dejan de contar como veteranos en los talleres siguientes.`),

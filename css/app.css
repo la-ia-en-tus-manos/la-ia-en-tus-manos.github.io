@@ -152,7 +152,26 @@ html.taller-gr { --cy: #8EE04E; }
 html.taller-pk { --cy: #FF5C9E; }
 html.taller-or { --cy: #FF9D42; }
 html.taller-rd { --cy: #FF6B6B; }
-.selector-taller { max-width: 100%; font-size: 0.85rem; padding: 6px 10px; }
+.talleres-nav { display: grid; gap: 8px; margin-bottom: 16px; }
+.grupo-taller { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--borde); border-radius: 14px; background: var(--cristal); }
+.grupo-titulo { font-weight: 800; min-width: 150px; letter-spacing: 0.02em; }
+.grupo-titulo span { color: var(--txt3); font-weight: 400; }
+.ediciones { display: flex; gap: 6px; flex-wrap: wrap; }
+.edicion { font: inherit; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 36px; border-radius: 999px; border: 1px solid var(--borde); background: transparent; color: var(--txt2); cursor: pointer; }
+.edicion small { color: var(--txt3); font-size: 0.75rem; }
+.edicion small.defecto { color: var(--cy); }
+.edicion.activa { background: var(--cy); color: var(--oscuro); border-color: var(--cy); }
+.edicion.activa small { color: var(--oscuro); opacity: 0.8; }
+.edicion.nueva { border-style: dashed; color: var(--gr); }
+.ficha-taller { display: grid; gap: 14px 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.ficha-dato small { display: block; color: var(--txt3); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.72rem; margin-bottom: 4px; }
+.ficha-dato select { width: auto; min-width: 180px; }
+details.seccion-config > summary { cursor: pointer; font-weight: 800; font-size: 1.1rem; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.seccion-config > summary::before { content: '▸'; color: var(--cy); transition: transform 0.15s; }
+details.seccion-config[open] > summary::before { transform: rotate(90deg); }
+details.seccion-config > summary::-webkit-details-marker { display: none; }
+details.seccion-config[open] > summary { margin-bottom: 10px; }
+.guardar-fijo { position: sticky; bottom: 0; padding: 10px 0 12px; background: linear-gradient(transparent, var(--bg0) 40%); }
 .c-cy { --acento: var(--cy); }
 .c-bl { --acento: var(--bl); }
 .c-vi { --acento: var(--vi2); }
