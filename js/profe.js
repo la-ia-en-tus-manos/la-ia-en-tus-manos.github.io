@@ -383,10 +383,11 @@ function accionesInscrito(i) {
 function avisarTodos() {
   const asunto = el('input', { type: 'text', placeholder: 'Asunto', value: estado.config.fecha ? 'Ya tenemos fecha para el taller' : '' });
   const cuerpo = el('textarea', { placeholder: 'Mensaje. Debajo irán la fecha, el lugar y el enlace personal de cada uno.' });
-  const hayPt = estado.inscritos.some((i) => i.idioma === 'pt-BR' && i.estado !== 'cancelado');
+  const hayPt = estado.inscritos.some((i) => i.idioma === 'pt-BR' && i.estado !== 'cancelado') || (estado.interesados || 0) > 0;
   const asuntoPt = el('input', { type: 'text', placeholder: 'Assunto (para os alunos em português)' });
   const cuerpoPt = el('textarea', { placeholder: 'Mensagem em português. Si lo dejas vacío, recibirán la versión en español.' });
-  const destino = el('select', {}, el('option', { value: 'plaza' }, `Con plaza (${estado.ocupacion.plaza})`), el('option', { value: 'espera' }, `En espera (${estado.ocupacion.espera})`), el('option', { value: 'todos' }, `Todos menos cancelados (${estado.ocupacion.plaza + estado.ocupacion.espera})`));
+  const destino = el('select', {}, el('option', { value: 'plaza' }, `Con plaza (${estado.ocupacion.plaza})`), el('option', { value: 'espera' }, `En espera (${estado.ocupacion.espera})`), el('option', { value: 'todos' }, `Todos menos cancelados (${estado.ocupacion.plaza + estado.ocupacion.espera})`),
+    el('option', { value: 'interesados' }, `Pidieron avisos en otros talleres y no están en este (${estado.interesados || 0}) · reciben el enlace de inscripción`));
   const { cerrar } = modal([el('h2', {}, 'Avisar por correo'), el('p', { class: 'apagado' }, `Quedan ${estado.cuota_correo} envíos hoy (límite de Gmail).`),
     el('label', { class: 'campo' }, el('span', {}, 'Destinatarios'), destino), el('label', { class: 'campo' }, el('span', {}, 'Asunto'), asunto), el('label', { class: 'campo' }, el('span', {}, 'Mensaje'), cuerpo),
     hayPt ? el('label', { class: 'campo' }, el('span', {}, 'Asunto en portugués (hay alumnos en pt-BR)'), asuntoPt) : null,
