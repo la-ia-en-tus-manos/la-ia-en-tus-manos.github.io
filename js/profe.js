@@ -89,7 +89,8 @@ function pintarInicio() {
   const oc = estado.ocupacion;
   const plazas = Math.min(+cfg.plazas, +cfg.kits_activos);
   const esDefecto = (estado.talleres.find((tl) => tl.id === cfg.taller_id) || {}).defecto;
-  const enlace = `${(cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '')}/index.html${esDefecto ? '' : `?taller=${encodeURIComponent(cfg.taller_id)}`}`;
+  const base = (cfg.url_app || location.origin + location.pathname.replace(/profe\.html$/, '')).replace(/\/+$/, '');
+  const enlace = `${base}/${encodeURIComponent(cfg.taller_id)}/`;
   const faltanSecretos = estado.contenido.medallas.some((m) => !estado.secretos[m.id]) || !estado.secretos.jefe;
   const ir = (id) => () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); window.scrollTo(0, 0); };
   const selector = el('select', {}, ...estado.estados.map((s) => el('option', { value: s, selected: s === cfg.estado }, NOMBRE_ESTADO[s])));
@@ -101,7 +102,7 @@ function pintarInicio() {
     dato('Plazas', el('b', {}, `${oc.plaza} de ${plazas}`), ` ocupadas · ${oc.espera} en espera (máx. ${cfg.max_espera})`, el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'ver inscritos')),
     dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados')),
     dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
-      esDefecto ? null : el('div', { class: 'apagado', style: 'font-size:0.85rem' }, 'Lleva «?taller=» porque no es el taller por defecto (Configuración → Nombre y contenido).')),
+      el('div', { class: 'apagado', style: 'font-size:0.85rem' }, `Dirección propia de este taller. La general (${base}/) abre ${esDefecto ? 'este taller' : 'el taller por defecto'} o, si hay varios abiertos, deja elegir.`)),
     dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos'))));
 
   const avisos = [];

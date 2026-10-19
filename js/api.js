@@ -6,7 +6,8 @@ import { idiomaActual, t } from './i18n.js';
 let taller = '';
 export function setTaller(id) { taller = id || ''; }
 export function tallerActual() { return taller; }
-export function tallerDeUrl() { return new URLSearchParams(location.search).get('taller') || ''; }
+// La dirección propia de un taller (…/taller2/) fija el taller en window.TALLER_FIJO; si no, vale «?taller=».
+export function tallerDeUrl() { return window.TALLER_FIJO || new URLSearchParams(location.search).get('taller') || ''; }
 // Color de acento del taller en toda la página.
 export function aplicarColorTaller(color) {
   document.documentElement.className = document.documentElement.className.replace(/\btaller-\w+/g, '').trim();
