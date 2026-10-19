@@ -140,8 +140,9 @@ function pintarPrevio() {
 
   app.append(el('div', { class: 'tarjeta candado c-vi' }, insignia('LuLock', 'vi', 'grande'), el('h2', {}, t('caso_bloqueado')), el('p', { class: 'sub' }, cfg.pista_caso)));
 
-  app.append(seccionPrevias());
+  // Primero cómo entrar en Gemini (hay quien no tiene cuenta): las previas vienen después.
   app.append(seccionGemini());
+  app.append(seccionPrevias());
 
   const extras = el('div', { class: 'tarjeta' }, el('h2', {}, t('tu_inscripcion')),
     el('p', {}, el('strong', {}, t('vendras_con')), nombreModo(a.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))),
