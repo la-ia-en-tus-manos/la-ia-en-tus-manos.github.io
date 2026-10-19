@@ -591,22 +591,33 @@ function formularioCierre() {
   const a = estado.alumno;
   const c = estado.contenido;
   const f = el('form', { class: 'tarjeta', novalidate: true });
-  const escala = el('div', { class: 'opciones', style: 'grid-template-columns:repeat(5,1fr)' }, ...[1, 2, 3, 4, 5].map((n) =>
-    el('label', { class: 'opcion', style: 'justify-content:center' }, el('input', { type: 'radio', name: 'seguridad', value: n }), el('strong', { style: 'font-size:1.4rem' }, n))));
+  const escala = (nombre, desde, hasta, etiquetas) => el('div', { class: 'opciones escala', style: `grid-template-columns:repeat(${Math.min(6, hasta - desde + 1)},1fr)` }, ...Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i).map((n) =>
+    el('label', { class: 'opcion', style: 'justify-content:center;padding:10px 4px', title: etiquetas ? etiquetas[n] || '' : '' }, el('input', { type: 'radio', name: nombre, value: n }), el('strong', { style: 'font-size:1.3rem' }, n))));
+  const valoracion = (clave) => el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t(`val_${clave}`)), escala(clave, 1, 5),
+    el('div', { class: 'escala-pies' }, el('span', {}, t('val_min')), el('span', {}, t('val_max'))));
   const utiles = el('select', { name: 'mision_util' }, el('option', { value: '' }, t('elige')), ...(c ? c.misiones : []).map((m) => el('option', { value: m.id }, `${m.id === 'JEFE' ? '★' : m.id} · ${m.titulo}`)));
   f.append(el('h2', {}, t('antes_irte')),
     el('label', { class: 'campo' }, el('span', {}, t('nombre_certificado')), el('input', { type: 'text', name: 'nombre_certificado', value: a.nombre_certificado || a.nombre, required: true }), el('span', { class: 'ayuda' }, t('revisalo'))),
-    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('seguro_ia')), escala),
+    el('h3', { style: 'margin:18px 0 4px' }, t('encuesta_titulo')), el('p', { class: 'apagado', style: 'margin:0 0 10px' }, t('encuesta_intro')),
+    ...['general', 'profesor', 'contenido', 'ritmo', 'app'].map(valoracion),
+    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('recomendaria')), escala('recomendaria', 0, 10),
+      el('div', { class: 'escala-pies' }, el('span', {}, t('reco_min')), el('span', {}, t('reco_max')))),
+    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('seguro_ia')), escala('seguridad', 1, 5)),
     el('label', { class: 'campo' }, el('span', {}, t('mision_util')), utiles),
+    el('label', { class: 'campo' }, el('span', {}, t('lo_mejor')), el('textarea', { name: 'lo_mejor', placeholder: t('lo_mejor_ph') })),
     el('label', { class: 'campo' }, el('span', {}, t('mejorarias')), el('textarea', { name: 'mejorar', placeholder: t('mejorar_ph') })),
     el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'aviso_t2', checked: a.avisos }), el('span', {}, t('aviso_t2'))),
     el('button', { class: 'boton grande bloque c-gr', type: 'submit' }, icono('LuCheck'), t('enviar')));
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(f).entries());
+    const falta = ['general', 'profesor', 'contenido', 'ritmo', 'app'].find((k) => !d[k]);
+    if (falta) { toast(t('err_valoracion', { que: t(`val_${falta}`) }), 'error'); f.querySelector(`input[name="${falta}"]`).closest('.campo').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    if (!d.recomendaria) return toast(t('err_recomendaria'), 'error');
     if (!d.seguridad) return toast(t('err_seguridad'), 'error');
     try {
-      await post('cierre', { t: token, nombre_certificado: d.nombre_certificado, seguridad: d.seguridad, mision_util: d.mision_util, mejorar: d.mejorar, aviso_t2: !!d.aviso_t2 });
+      await post('cierre', { t: token, nombre_certificado: d.nombre_certificado, seguridad: d.seguridad, mision_util: d.mision_util, mejorar: d.mejorar, aviso_t2: !!d.aviso_t2,
+        general: d.general, profesor: d.profesor, contenido: d.contenido, ritmo: d.ritmo, app: d.app, recomendaria: d.recomendaria, lo_mejor: d.lo_mejor });
       estado = await get('alumno', { t: token });
       pintar();
       toast(t('gracias_proximo'));

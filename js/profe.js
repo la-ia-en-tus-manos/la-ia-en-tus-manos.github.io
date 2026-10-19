@@ -77,9 +77,9 @@ function pintar() {
     el('div', {}, pildora(`Taller ${cfg.numero_taller} · ${cfg.nivel}`), el('h1', { style: 'font-size:1.6rem' }, cfg.nombre_taller), estado.talleres.length > 1 ? el('div', { style: 'margin-top:8px' }, selectorTaller) : null),
     el('div', { style: 'text-align:right' }, el('span', { class: `chip c-${cfg.estado === 'taller_en_curso' ? 'gr' : cfg.estado === 'inscripcion_abierta' ? 'cy' : 'ye'}` }, NOMBRE_ESTADO[cfg.estado]), el('br'),
       el('button', { class: 'boton fantasma peque', style: 'margin-top:8px', onclick: () => { clave = ''; sessionStorage.removeItem('profe_clave'); pintarAcceso(); } }, 'Salir'))));
-  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
+  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['encuestas', 'Encuestas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
   app.append(el('div', { class: 'pestanas' }, ...pestanas.map(([id, nombre]) => el('button', { class: id === pestana ? 'activa' : '', onclick: () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); } }, nombre))));
-  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
+  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, encuestas: pintarEncuestas, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
   pintarIconos(app);
 }
 
@@ -389,6 +389,37 @@ function pintarDiplomas() {
   });
   tabla.append(cuerpo);
   app.append(el('div', { class: 'tabla-scroll tarjeta' }, tabla));
+}
+
+/* ───────────── Encuestas ───────────── */
+
+async function pintarEncuestas() {
+  const caja = el('div', {}, el('p', { class: 'sub' }, 'Cargando…'));
+  app.append(caja);
+  try {
+    const r = await get('p_encuestas', { k: clave });
+    vaciar(caja);
+    caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, `Encuesta de calidad · ${estado.config.taller_id}`),
+      el('p', { class: 'sub' }, `${r.total} respuestas de ${r.inscritos} alumnos con plaza. Se rellena en el cierre, junto con el nombre del diploma.`),
+      el('div', { class: 'botones' }, el('button', { class: 'boton secundario', onclick: async () => { try { const c = await get('p_encuestas', { k: clave, csv: true }); descargarBlob(new Blob(['\ufeff' + c.csv], { type: 'text/csv;charset=utf-8' }), c.nombre); } catch (e) { toast(e.message, 'error'); } } }, icono('LuDownload'), 'Exportar CSV'))));
+    if (!r.total) return caja.append(el('p', { class: 'sub' }, 'Todavía no hay respuestas.'));
+    const barra = (valor, max) => el('div', { class: 'barra', style: 'width:100%;max-width:260px' }, el('div', { style: `width:${Math.round(100 * (valor || 0) / max)}%` }));
+    const filas = Object.keys(r.nombres).concat(['seguridad']).map((k) => el('tr', {}, el('td', {}, k === 'seguridad' ? 'Seguridad usando IA (al terminar)' : r.nombres[k].replace(/^./, (c) => c.toUpperCase())), el('td', {}, el('b', { style: 'font-size:1.3rem' }, r.medias[k] === null ? '—' : r.medias[k]), el('small', { class: 'apagado' }, ' / 5')), el('td', {}, barra(r.medias[k], 5))));
+    caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Valoraciones (media de 1 a 5)'), el('table', {}, el('tbody', {}, ...filas))));
+    const nps = r.recomendaria;
+    caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, '¿Lo recomendarías? (0 a 10)'),
+      el('div', { class: 'rejilla' },
+        el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, nps.media === null ? '—' : nps.media), el('small', {}, 'media')),
+        el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, nps.promotores), el('small', {}, 'promotores (9–10)')),
+        el('div', { class: 'tarjeta kpi c-rd' }, el('b', {}, nps.detractores), el('small', {}, 'detractores (0–6)')),
+        el('div', { class: `tarjeta kpi c-${nps.nps >= 50 ? 'gr' : nps.nps >= 0 ? 'ye' : 'rd'}` }, el('b', {}, nps.nps === null ? '—' : nps.nps), el('small', {}, 'NPS (promotores − detractores)')))));
+    if (r.misiones.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Misión más útil'), el('ul', { style: 'padding-left:20px' }, ...r.misiones.map((m) => el('li', {}, el('b', {}, `${m.id} · ${m.titulo}`), ` · ${m.votos} ${m.votos === 1 ? 'voto' : 'votos'}`)))));
+    if (r.comentarios.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Comentarios'), ...r.comentarios.map((c) => el('div', { style: 'border-top:1px solid var(--borde);padding:10px 0' },
+      el('small', { class: 'apagado' }, `Explorador n.º ${c.numero}`),
+      c.lo_mejor ? el('p', { style: 'margin:4px 0' }, el('strong', { class: 'c-gr acento' }, 'Lo mejor: '), c.lo_mejor) : null,
+      c.mejorar ? el('p', { style: 'margin:4px 0' }, el('strong', { class: 'c-ye acento' }, 'Mejoraría: '), c.mejorar) : null))));
+    pintarIconos(caja);
+  } catch (e) { errorPantalla(caja, e.message); }
 }
 
 /* ───────────── Configuración ───────────── */

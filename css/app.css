@@ -231,6 +231,8 @@ select option { background: var(--bg1); }
 
 .opciones { display: grid; gap: 10px; }
 .opciones.tres { grid-template-columns: repeat(3, 1fr); }
+.opciones.escala { gap: 6px; }
+.escala-pies { display: flex; justify-content: space-between; color: var(--txt3); font-size: 0.85rem; margin-top: 4px; }
 @media (max-width: 520px) { .opciones.tres { grid-template-columns: 1fr; } }
 .opcion {
   position: relative;
