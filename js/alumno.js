@@ -631,7 +631,7 @@ function formularioCierre() {
     el('label', { class: 'campo' }, el('span', {}, t('nombre_certificado')), el('input', { type: 'text', name: 'nombre_certificado', value: a.nombre_certificado || a.nombre, required: true }), el('span', { class: 'ayuda' }, t('revisalo'))),
     el('h3', { style: 'margin:18px 0 4px' }, t('encuesta_titulo')), el('p', { class: 'apagado', style: 'margin:0 0 10px' }, t('encuesta_intro')),
     ...['general', 'profesor', 'contenido', 'ritmo', 'app'].map(valoracion),
-    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('recomendaria')), escala('recomendaria', 0, 10),
+    el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('recomendaria')), escala('recomendaria', 1, 10),
       el('div', { class: 'escala-pies' }, el('span', {}, t('reco_min')), el('span', {}, t('reco_max')))),
     el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('seguro_ia')), escala('seguridad', 1, 5)),
     el('label', { class: 'campo' }, el('span', {}, t('mision_util')), utiles),
