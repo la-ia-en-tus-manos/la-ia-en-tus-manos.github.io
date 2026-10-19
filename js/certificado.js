@@ -115,7 +115,12 @@ async function iniciar() {
     if (params.has('demo')) {
       const d = { ...DEMO, idioma: params.get('idioma') || idiomaActual() };
       if (params.has('todo')) d.medallas = d.medallas.map((m) => ({ ...m, ganada: true }));   // muestra con todo conseguido
-      if (d.idioma === 'pt-BR') d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: 'Concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
+      if (d.idioma === 'pt-BR') {
+        // Muestra en portugués: nombre del taller, medallas y fecha como los vería un alumno en pt-BR.
+        d.taller = 'A IA nas suas mãos'; d.fecha_legible = 'sábado, 7 de novembro de 2026';
+        d.medallas = d.medallas.map((m) => ({ ...m, nombre: { ingenio: 'Engenho', guardian: 'Guardião', detective: 'Detetive' }[m.id] || m.nombre }));
+        d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: 'Concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
+      }
       return pintar(d);
     }
     // La clave del profesor llega en el fragmento (#k=…) desde el panel; se guarda en la sesión y se quita de la barra.
