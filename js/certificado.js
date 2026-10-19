@@ -26,8 +26,15 @@ function emblema() {
 }
 
 // Rúbrica inventada: un trazo continuo a mano alzada, con una subrayada final.
-function rubrica() {
-  return el('div', { class: 'dip-rubrica', html: `<svg viewBox="0 0 260 90" aria-hidden="true"><path d="M14 62c10-26 22-44 30-44 6 0-2 24-8 40-4 11 2 12 9 4 10-12 18-30 24-34 4-3 2 8-1 18-4 13 2 13 9 4 8-10 14-24 19-24 4 0 2 10-1 20-3 12 4 10 11 2 6-7 10-14 16-16 5-1 3 8 1 15-3 10 4 9 10 3 9-9 19-22 27-22 5 0 2 12-1 22-2 9 5 8 11 2 9-9 17-19 27-19 7 0 5 12 2 22-2 7 4 8 9 3 7-7 16-22 24-22 6 0 8 10 7 15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 74c40-6 120-10 190-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".8"/></svg>` });
+// Rúbrica dibujada a partir del nombre de quien firma: el nombre en letra manuscrita, con un trazo de
+// adorno debajo, como una firma de verdad. Si hay imagen de firma configurada, se usa esa en su lugar.
+function rubrica(firmante) {
+  const nombre = (firmante || '').trim();
+  const partes = nombre.split(/\s+/);
+  const inicial = partes[0] ? partes[0][0] : '';
+  return el('div', { class: 'dip-rubrica', 'aria-hidden': 'true' },
+    el('div', { class: 'dip-rubrica-texto' }, el('span', { class: 'dip-rubrica-inicial' }, inicial), nombre.slice(inicial.length)),
+    el('div', { html: `<svg viewBox="0 0 260 26"><path d="M8 16c30-10 70-14 120-12 40 2 80 6 124 2M70 22c40-5 90-7 150-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".85"/><path d="M226 6c6 2 10 6 10 10-2 4-8 4-12 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>` }));
 }
 
 function rellenar(plantilla, d) {
@@ -53,7 +60,7 @@ function pintar(d, contenedor = diploma) {
       el('p', { class: 'dip-resumen' }, t('dip_resumen', { medallas: ganadas, total: d.medallas.length, misiones: d.misiones, total_misiones: d.total_misiones }), d.jefe ? ` · ${t('dip_jefe')}` : '')),
     el('div', { class: 'dip-pie' },
       el('div', { class: 'dip-fecha' }, d.textos.lugar ? `${d.textos.lugar}, ` : '', el('b', {}, d.fecha_legible || t('fecha_por_confirmar_t'))),
-      el('div', { class: 'dip-firma' }, d.textos.firma_url ? el('img', { class: 'dip-rubrica-img', src: d.textos.firma_url, alt: '' }) : rubrica(), el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
+      el('div', { class: 'dip-firma' }, d.textos.firma_url ? el('img', { class: 'dip-rubrica-img', src: d.textos.firma_url, alt: '' }) : rubrica(d.textos.firmante), el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
   );
   vaciar(acciones).append(
     el('button', { class: 'boton', onclick: () => window.print() }, icono('LuPrinter'), t('dip_imprimir')),

@@ -61,8 +61,10 @@ body { overflow-x: auto; }
 .dip-pie { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-top: 8mm; }
 .dip-firma { text-align: center; min-width: 70mm; }
 .dip-firma .linea { border-top: 1px solid rgba(255, 255, 255, 0.5); margin-bottom: 6px; }
-.dip-rubrica { color: var(--cy); width: 60mm; margin: 0 auto -6px; }
-.dip-rubrica svg { width: 100%; height: auto; display: block; }
+.dip-rubrica { color: var(--cy); width: 60mm; margin: 0 auto -6px; position: relative; }
+.dip-rubrica svg { width: 100%; height: auto; display: block; margin-top: -10px; }
+.dip-rubrica-texto { font-family: 'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive; font-size: 40px; line-height: 1; white-space: nowrap; transform: rotate(-4deg); transform-origin: left bottom; padding: 4px 0 6px 10px; text-shadow: 0 0 10px rgba(34, 230, 210, 0.35); }
+.dip-rubrica-inicial { font-size: 56px; letter-spacing: -2px; }
 .dip-rubrica-img { max-width: 60mm; max-height: 22mm; display: block; margin: 0 auto -4px; }
 #diplomas .diploma { margin-bottom: 20px; }
 .dip-firma b { display: block; font-size: 15px; }
