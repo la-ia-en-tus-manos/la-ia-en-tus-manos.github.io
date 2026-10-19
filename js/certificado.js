@@ -26,18 +26,47 @@ function emblema() {
 }
 
 // Rúbrica inventada: un trazo continuo a mano alzada, con una subrayada final.
-// Rúbrica abstracta a partir del nombre de quien firma: las iniciales en trazo manuscrito, grandes y
-// entrelazadas, y el resto del nombre convertido en un garabato que se apaga, con un rasgo debajo.
-// Si hay imagen de firma configurada, se usa esa en su lugar.
+// Rúbrica abstracta generada a partir del nombre de quien firma: cada letra se convierte en un trazo
+// (mayúsculas en bucles grandes, vocales en lazos, consonantes en picos; su altura y anchura salen de la
+// letra), así que cada nombre tiene su propia firma sin que se lea. Si hay imagen de firma, se usa esa.
+function trazoFirma(nombre) {
+  let x = 6;
+  let d = `M${x} 44`;
+  const letras = nombre.replace(/\s+/g, ' ').split('');
+  letras.forEach((ch, i) => {
+    const c = ch.toLowerCase().charCodeAt(0);
+    const alto = 12 + (c % 7) * 4;
+    const ancho = 7 + (c % 4) * 2;
+    if (ch === ' ') { d += ` c${ancho} 6, ${ancho * 2} 6, ${ancho * 3} 0`; x += ancho * 3; return; }
+    const mayus = ch !== ch.toLowerCase();
+    const vocal = 'aeiouáéíóú'.includes(ch.toLowerCase());
+    if (mayus) {
+      // Bucle grande que sube, cruza y vuelve.
+      d += ` c${-ancho * 1.5} ${-alto * 2.4}, ${ancho * 3} ${-alto * 2.6}, ${ancho * 0.6} ${-alto * 0.2} c${-ancho * 1.6} ${alto * 1.6}, ${ancho * 1.2} ${alto * 1.3}, ${ancho * 2} ${alto * 0.2}`;
+      x += ancho * 2.6;
+    } else if (vocal) {
+      // Lazo pequeño.
+      d += ` c${ancho * 1.4} ${-alto * 1.2}, ${-ancho * 1.1} ${-alto * 1.3}, ${ancho * 0.9} 0`;
+      x += ancho * 0.9;
+    } else if (i === letras.length - 1) {
+      d += ` c${ancho * 0.4} ${-alto}, ${ancho} ${-alto * 0.4}, ${ancho * 1.6} 0`;
+      x += ancho * 1.6;
+    } else {
+      // Pico.
+      d += ` c${ancho * 0.35} ${-alto * 1.6}, ${ancho * 0.75} ${-alto * 1.6}, ${ancho} 0`;
+      x += ancho;
+    }
+  });
+  // Cola que se apaga.
+  d += ` c14 10, 30 10, 48 -8`;
+  x += 48;
+  return { d, ancho: x + 8 };
+}
+
 function rubrica(firmante) {
-  const partes = (firmante || '').trim().split(/\s+/).filter(Boolean);
-  const iniciales = partes.slice(0, 2).map((p) => p[0]);
-  const largo = Math.max(60, Math.min(150, (firmante || '').length * 9));
-  return el('div', { class: 'dip-rubrica', 'aria-hidden': 'true' },
-    el('div', { class: 'dip-rubrica-trazo' },
-      ...iniciales.map((i, n) => el('span', { class: `dip-rubrica-inicial i${n}` }, i)),
-      el('div', { class: 'dip-rubrica-garabato', html: `<svg viewBox="0 0 ${largo} 40"><path d="M2 26c8-14 14-20 18-18 3 2-3 12-5 18-2 6 3 7 7 2 5-7 9-14 12-15 3-1 1 6-1 11-2 6 2 6 6 1 5-6 8-11 11-11 3 0 1 7-1 12-1 5 3 4 6 0 5-6 9-12 13-12 3 0 1 8-1 13 0 4 4 3 7-1 5-6 9-12 13-12 3 0 2 7 1 12 0 4 3 4 6 0 4-5 8-10 11-10 2 0 1 6 0 10 0 3 3 3 5 0 4-5 8-9 10-9 2 0 1 5 0 8 0 3 3 2 5-1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:1000;opacity:.9"/></svg>` })),
-    el('div', { class: 'dip-rubrica-rasgo', html: `<svg viewBox="0 0 260 30"><path d="M6 18c40-12 90-16 140-12 40 3 70 8 108 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".8"/><path d="M60 26c50-6 110-8 170-6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/><path d="M232 6c7 1 12 5 12 9-1 4-7 5-11 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".7"/></svg>` }));
+  const nombre = (firmante || 'Firma').trim();
+  const { d, ancho } = trazoFirma(nombre);
+  return el('div', { class: 'dip-rubrica', 'aria-hidden': 'true', html: `<svg viewBox="0 -14 ${ancho} 76"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity=".35" transform="translate(1.5 1.5)"/><path d="M${ancho * 0.08} 56c${ancho * 0.25} -9, ${ancho * 0.55} -11, ${ancho * 0.84} -5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>` });
 }
 
 function rellenar(plantilla, d) {
