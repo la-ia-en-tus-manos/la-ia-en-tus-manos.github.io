@@ -94,7 +94,7 @@ function pintar(conservar = false) {
     if (!modoConfirmado && vista.tipo === 'auto') return pintarConfirmarModo();
     return pintarTaller();
   }
-  if (fase === 'terminado') return pintarCierre();
+  if (fase === 'terminado') return vista.tipo === 'repaso' ? pintarMision(vista.id, true) : pintarCierre();
   return pintarPrevio();
 }
 
@@ -312,15 +312,7 @@ function pintarTaller() {
   app.append(cabeceraAlumno());
   app.append(el('p', { class: 'apagado' }, icono(ICONO_MODO[estado.alumno.modo]), ' ', nombreModo(estado.alumno.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))));
 
-  app.append(el('div', { class: 'tarjeta tinte c-cy' }, pildora(t('tu_personaje')),
-    el('h2', {}, k.personaje.nombre), el('p', { class: 'sub' }, `${t('anos', { n: k.personaje.edad })} · ${k.personaje.oficio} · ${k.personaje.ciudad}`),
-    k.personaje.problema ? el('p', { class: 'grande' }, k.personaje.problema) : null,
-    k.proyecto ? el('div', { class: 'proyecto' }, insignia(k.proyecto.icono || 'LuFolderKanban', 'cy', 'peque'),
-      el('div', {}, el('small', {}, k.proyecto.tipo ? `${t('tu_proyecto')} · ${k.proyecto.tipo}` : t('tu_proyecto')), el('b', {}, k.proyecto.titulo))) : null,
-    k.lo_que_sabes ? el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, t('lo_que_sabes')),
-      el('ul', { style: 'padding-left:20px' }, ...k.lo_que_sabes.map((s) => el('li', {}, s))),
-      k.datos_ficticios ? el('p', { class: 'apagado' }, t('datos_ficticios', { dni: k.datos_ficticios.dni, domicilio: k.datos_ficticios.domicilio }), Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')) : null,
-      el('p', { class: 'apagado' }, c.aviso)) : el('p', { class: 'apagado' }, c.aviso)));
+  app.append(tarjetaPersonaje());
 
   app.append(seccionMedallas());
 
@@ -328,10 +320,7 @@ function pintarTaller() {
   const lista = el('div', { class: 'mapa' });
   c.misiones.forEach((m) => {
     const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : prog.misiones.includes(m.id);
-    lista.append(el('button', { class: `mision-tarjeta c-${m.color} ${cumplida ? 'cumplida' : ''}`, onclick: () => { vista = { tipo: 'mision', id: m.id }; pintar(); window.scrollTo(0, 0); } },
-      insignia(m.icono, m.color, 'peque'), el('span', { class: 'codigo' }, m.id === 'JEFE' ? '★' : m.id),
-      el('span', { class: 'texto' }, el('strong', {}, m.titulo), el('span', {}, `${m.min} min · ${m.objetivo}`)),
-      el('span', { class: 'sello' }, cumplida ? icono('LuCheck') : '')));
+    lista.append(botonMision(m, cumplida, () => { vista = { tipo: 'mision', id: m.id }; pintar(); window.scrollTo(0, 0); }));
   });
   mapa.append(lista);
   app.append(mapa);
@@ -353,6 +342,45 @@ function pintarTaller() {
   }
   app.append(barraAyuda());
   pintarIconos(app);
+}
+
+function tarjetaPersonaje() {
+  const c = estado.contenido;
+  const k = c.kit;
+  return el('div', { class: 'tarjeta tinte c-cy' }, pildora(t('tu_personaje')),
+    el('h2', {}, k.personaje.nombre), el('p', { class: 'sub' }, `${t('anos', { n: k.personaje.edad })} · ${k.personaje.oficio} · ${k.personaje.ciudad}`),
+    k.personaje.problema ? el('p', { class: 'grande' }, k.personaje.problema) : null,
+    k.proyecto ? el('div', { class: 'proyecto' }, insignia(k.proyecto.icono || 'LuFolderKanban', 'cy', 'peque'),
+      el('div', {}, el('small', {}, k.proyecto.tipo ? `${t('tu_proyecto')} · ${k.proyecto.tipo}` : t('tu_proyecto')), el('b', {}, k.proyecto.titulo))) : null,
+    k.lo_que_sabes ? el('details', {}, el('summary', { style: 'cursor:pointer;font-weight:700;color:var(--cy)' }, t('lo_que_sabes')),
+      el('ul', { style: 'padding-left:20px' }, ...k.lo_que_sabes.map((s) => el('li', {}, s))),
+      k.datos_ficticios ? el('p', { class: 'apagado' }, t('datos_ficticios', { dni: k.datos_ficticios.dni, domicilio: k.datos_ficticios.domicilio }), Object.entries(k.datos_ficticios.otros || {}).map(([a, b]) => ` · ${a}: ${b}`).join('')) : null,
+      el('p', { class: 'apagado' }, c.aviso)) : el('p', { class: 'apagado' }, c.aviso));
+}
+
+function botonMision(m, cumplida, alPulsar) {
+  return el('button', { class: `mision-tarjeta c-${m.color} ${cumplida ? 'cumplida' : ''}`, onclick: alPulsar },
+    insignia(m.icono, m.color, 'peque'), el('span', { class: 'codigo' }, m.id === 'JEFE' ? '★' : m.id),
+    el('span', { class: 'texto' }, el('strong', {}, m.titulo), el('span', {}, `${m.min} min · ${m.objetivo}`)),
+    el('span', { class: 'sello' }, cumplida ? icono('LuCheck') : ''));
+}
+
+// Después del taller: el mismo caso para repetirlo en casa (pasos, prompts y documentos, sin sellos).
+function seccionRepiteEnCasa() {
+  const c = estado.contenido;
+  const prog = estado.progreso;
+  const lista = el('div', { class: 'mapa' });
+  c.misiones.forEach((m) => {
+    const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : prog.misiones.includes(m.id);
+    lista.append(botonMision(m, cumplida, () => { vista = { tipo: 'repaso', id: m.id }; pintar(); window.scrollTo(0, 0); }));
+  });
+  const caja = el('div', { class: 'tarjeta tinte c-cy' }, pildora(t('repite_pildora')), el('h2', {}, t('repite_titulo')),
+    el('p', { class: 'sub' }, t('repite_txt')), el('p', { class: 'apagado' }, t('sustituye')), lista);
+  if ((c.misiones_extra || []).length) {
+    caja.append(el('details', { style: 'margin-top:12px' }, el('summary', { style: 'cursor:pointer;font-weight:700' }, t('sobra_tiempo')),
+      ...c.misiones_extra.map((m) => tarjetaPrompt(m.titulo, m.prompt, 'vi'))));
+  }
+  return caja;
 }
 
 function seccionMedallas() {
@@ -431,14 +459,16 @@ function seccionArchivos(ids, color) {
   return caja;
 }
 
-function pintarMision(id) {
+function pintarMision(id, repaso = false) {
   const c = estado.contenido;
   const m = c.misiones.find((x) => x.id === id);
   const k = c.kit;
   const idx = c.misiones.indexOf(m);
   const cumplida = m.id === 'JEFE' ? estado.alumno.jefe : estado.progreso.misiones.includes(m.id);
   app.classList.add(`c-${m.color}`);
-  app.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma peque', onclick: () => { vista = { tipo: 'mapa' }; pintar(); } }, icono('LuArrowLeft'), t('mapa')),
+  const tipoVista = repaso ? 'repaso' : 'mision';
+  if (repaso) { app.append(cabeceraAlumno()); if (estado.alumno.modo === 'ambos') app.classList.add('modo-ambos'); }
+  app.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma peque', onclick: () => { vista = { tipo: 'mapa' }; pintar(); window.scrollTo(0, 0); } }, icono('LuArrowLeft'), repaso ? t('volver_cierre') : t('mapa')),
     el('span', { class: 'apagado', style: 'margin-left:auto;align-self:center' }, `${estado.config.nivel || t('explorador')} ${t('numero', { n: estado.alumno.numero })}`)));
   app.append(el('div', { class: 'tarjeta fila tinte' }, insignia(m.icono, m.color, 'grande'),
     el('div', {}, pildora(m.id === 'JEFE' ? t('jefe_final', { min: m.min }) : t('mision_n', { n: m.id.slice(1), min: m.min }), m.color), el('h1', { style: 'font-size:1.7rem' }, m.titulo), el('p', { class: 'sub' }, m.objetivo))));
@@ -465,7 +495,9 @@ function pintarMision(id) {
   }
 
   const cierre = el('div', { class: 'tarjeta tinte' }, pildora(t('cumplida_cuando'), m.color), el('p', { class: 'grande' }, m.cumplida));
-  if (m.id === 'JEFE') {
+  if (repaso) {
+    // Después del taller no hay sellos ni jefe que validar: solo el recuerdo de cómo quedó.
+  } else if (m.id === 'JEFE') {
     if (cumplida) cierre.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('jefe_superado')), t('jefe_validado')));
     else {
       const f = el('form', { class: 'botones', style: 'align-items:stretch' });
@@ -498,9 +530,10 @@ function pintarMision(id) {
   app.append(cierre);
 
   const nav = el('div', { class: 'botones' });
-  if (idx > 0) nav.append(el('button', { class: 'boton fantasma', onclick: () => { vista = { tipo: 'mision', id: c.misiones[idx - 1].id }; pintar(); window.scrollTo(0, 0); } }, icono('LuChevronLeft'), c.misiones[idx - 1].id));
-  if (idx < c.misiones.length - 1) nav.append(el('button', { class: 'boton fantasma', style: 'margin-left:auto', onclick: () => { vista = { tipo: 'mision', id: c.misiones[idx + 1].id }; pintar(); window.scrollTo(0, 0); } }, c.misiones[idx + 1].id, icono('LuChevronRight')));
-  app.append(nav, barraAyuda());
+  if (idx > 0) nav.append(el('button', { class: 'boton fantasma', onclick: () => { vista = { tipo: tipoVista, id: c.misiones[idx - 1].id }; pintar(); window.scrollTo(0, 0); } }, icono('LuChevronLeft'), c.misiones[idx - 1].id));
+  if (idx < c.misiones.length - 1) nav.append(el('button', { class: 'boton fantasma', style: 'margin-left:auto', onclick: () => { vista = { tipo: tipoVista, id: c.misiones[idx + 1].id }; pintar(); window.scrollTo(0, 0); } }, c.misiones[idx + 1].id, icono('LuChevronRight')));
+  app.append(nav);
+  if (!repaso) app.append(barraAyuda());
   pintarIconos(app);
 }
 
@@ -560,7 +593,7 @@ function seccionImagen(tipo, color) {
     if (!r) return;
     imagenesCache[`${tipo}_tapada`] = r.blob;
     mostrar(r.blob, true);
-    if (estado.progreso.medallas.includes('guardian')) return;
+    if (estado.progreso.medallas.includes('guardian') || estado.config.estado !== 'taller_en_curso') return;
     try {
       const res = await post('guardian', { t: token, cobertura: r.cobertura });
       if (res.ganada) medallaGanada(res.medalla, res.progreso);
@@ -611,11 +644,7 @@ function pintarCierre() {
   } else {
     app.append(formularioCierre());
   }
-  if (c && c.kit) {
-    app.append(el('div', { class: 'tarjeta' }, el('details', {}, el('summary', { style: 'cursor:pointer' }, el('h2', { style: 'display:inline' }, t('tus_prompts_volver'))),
-      el('p', { class: 'apagado', style: 'margin-top:10px' }, t('sustituye')),
-      ...Object.entries(c.kit.prompts).filter(([k]) => k !== 'M3-B_piezas').map(([k, v]) => tarjetaPrompt(k, v, 'cy')))));
-  }
+  if (c && c.kit) app.append(tarjetaPersonaje(), seccionRepiteEnCasa());
   pintarIconos(app);
 }
 
