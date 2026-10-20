@@ -17,7 +17,7 @@ let temporizador = null;
 let cuentaAtrasTimer = null;
 const imagenesCache = {};
 
-const PIEZAS = [['quien_soy', 'bl'], ['que_ha_pasado', 'bl'], ['que_quiero', 'vi'], ['reglas', 'pk'], ['formato', 'or']];
+const PIEZAS = [['quien_soy', 'cy'], ['que_ha_pasado', 'bl'], ['que_quiero', 'vi'], ['reglas', 'pk'], ['formato', 'ye']];
 const nombreModo = (m) => t(`modo_${m}`);
 const nombreImagen = (tipo, archivo) => (archivo && archivo.titulo) || t(`img_${tipo}`);
 const txtCopiar = () => ({ ok: t('copiado'), error: t('no_copiado') });
