@@ -499,13 +499,12 @@ async function pintarEncuestas() {
     const barra = (valor, max) => el('div', { class: 'barra', style: 'width:100%;max-width:260px' }, el('div', { style: `width:${Math.round(100 * (valor || 0) / max)}%` }));
     const filas = Object.keys(r.nombres).concat(['seguridad']).map((k) => el('tr', {}, el('td', {}, k === 'seguridad' ? 'Seguridad usando IA (al terminar)' : r.nombres[k].replace(/^./, (c) => c.toUpperCase())), el('td', {}, el('b', { style: 'font-size:1.3rem' }, r.medias[k] === null ? '—' : r.medias[k]), el('small', { class: 'apagado' }, ' / 5')), el('td', {}, barra(r.medias[k], 5))));
     caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Valoraciones (media de 1 a 5)'), el('table', {}, el('tbody', {}, ...filas))));
-    const nps = r.recomendaria;
-    caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, '¿Lo recomendarías? (1 a 10)'),
+    const reco = r.recomendaria;
+    caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, '¿Lo recomendarías? (media de 1 a 5)'),
       el('div', { class: 'rejilla' },
-        el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, nps.media === null ? '—' : nps.media), el('small', {}, 'media')),
-        el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, nps.promotores), el('small', {}, 'promotores (9–10)')),
-        el('div', { class: 'tarjeta kpi c-rd' }, el('b', {}, nps.detractores), el('small', {}, 'detractores (1–6)')),
-        el('div', { class: `tarjeta kpi c-${nps.nps >= 50 ? 'gr' : nps.nps >= 0 ? 'ye' : 'rd'}` }, el('b', {}, nps.nps === null ? '—' : nps.nps), el('small', {}, 'NPS (promotores − detractores)')))));
+        el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, reco.media === null ? '—' : reco.media), el('small', {}, 'media sobre 5')),
+        el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, reco.recomiendan), el('small', {}, 'lo recomendarían (4–5)')),
+        el('div', { class: 'tarjeta kpi c-rd' }, el('b', {}, reco.no_recomiendan), el('small', {}, 'no lo recomendarían (1–2)')))));
     if (r.misiones.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Misión más útil'), el('ul', { style: 'padding-left:20px' }, ...r.misiones.map((m) => el('li', {}, el('b', {}, `${m.id} · ${m.titulo}`), ` · ${m.votos} ${m.votos === 1 ? 'voto' : 'votos'}`)))));
     if (r.comentarios.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Comentarios'), ...r.comentarios.map((c) => el('div', { style: 'border-top:1px solid var(--borde);padding:10px 0' },
       el('small', { class: 'apagado' }, `Explorador n.º ${c.numero}`),
