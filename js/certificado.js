@@ -11,7 +11,7 @@ const diploma = document.getElementById('diploma');
 const acciones = document.getElementById('acciones');
 
 const DEMO = {
-  idioma: 'es', nombre: 'Carmen Ruiz López', numero: '07', taller: 'La IA en tus manos', numero_taller: '1', nivel: 'Explorador', fecha_legible: 'sábado 7 de noviembre de 2026',
+  idioma: 'es', nombre: 'Carmen Ruiz López', numero: '07', taller: 'La IA en tus manos', numero_taller: '1', nivel: 'Explorador', fecha_legible: '7 de noviembre de 2026',
   misiones: 9, total_misiones: 9, jefe: true,
   medallas: [{ id: 'ingenio', nombre: 'Ingenio', color: 'ye', icono: 'LuLightbulb', ganada: true }, { id: 'guardian', nombre: 'Guardián', color: 'cy', icono: 'LuShieldCheck', ganada: true }, { id: 'detective', nombre: 'Detective', color: 'pk', icono: 'LuSearch', ganada: false }],
   textos: { titulo: 'Diploma de Explorador', texto: 'Ha completado el taller práctico «{taller}» (Taller {numero_taller} · nivel {nivel}): cuatro horas aprendiendo a usar la inteligencia artificial con cabeza, con criterio y con cuidado de sus datos.', firmante: 'Luis Oliva', firmante_cargo: 'Ingeniero informático · ponente del taller', lugar: 'Madrid', logo_url: '' }
@@ -117,7 +117,7 @@ async function iniciar() {
       if (params.has('todo')) d.medallas = d.medallas.map((m) => ({ ...m, ganada: true }));   // muestra con todo conseguido
       if (d.idioma === 'pt-BR') {
         // Muestra en portugués: nombre del taller, medallas y fecha como los vería un alumno en pt-BR.
-        d.taller = 'A IA nas suas mãos'; d.fecha_legible = 'sábado, 7 de novembro de 2026';
+        d.taller = 'A IA nas suas mãos'; d.fecha_legible = '7 de novembro de 2026';
         d.medallas = d.medallas.map((m) => ({ ...m, nombre: { ingenio: 'Engenho', guardian: 'Guardião', detective: 'Detetive' }[m.id] || m.nombre }));
         d.textos = { ...d.textos, titulo: 'Diploma de Explorador', texto: 'Concluiu a oficina prática «{taller}» (Oficina {numero_taller} · nível {nivel}): quatro horas aprendendo a usar a inteligência artificial com cabeça, com critério e cuidando dos seus dados.', firmante_cargo: 'Engenheiro de informática · palestrante da oficina' };
       }
