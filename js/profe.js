@@ -363,7 +363,7 @@ function pintarInscritos() {
       el('td', {}, el('strong', {}, i.numero || '—')),
       el('td', {}, el('strong', {}, i.nombre), ...(i.historial || []).map((h) => el('span', { class: `chip ${h.completado ? 'c-gr' : 'c-ye'}`, style: 'margin-left:6px', title: `${h.edicion} · ${h.medallas} medallas${h.jefe ? ' · jefe' : ''}${h.completado ? '' : ' · sin terminar'}` }, `${h.nivel || h.edicion}${h.completado ? ' ✓' : ''}`)),
         +cfg.numero_taller > 1 && !(i.historial || []).length ? el('span', { class: 'chip c-rd', style: 'margin-left:6px', title: 'No consta en ningún taller anterior' }, 'sin nivel anterior') : null,
-        el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '', i.estado === 'plaza' && (i.historial || []).some((h) => h.kit === Number(i.numero)) ? ' · mismo caso que antes' : '')),
+        el('br'), el('small', { class: 'apagado' }, `inscrito ${fechaHora(i.creado)}`, i.avisos ? ' · quiere avisos' : '')),
       el('td', {}, el('small', {}, i.correo, i.telefono ? [el('br'), i.telefono] : null)),
       el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma), ' ',
         i.estado === 'plaza' ? el('span', { class: `chip ${i.personaje !== 'x' && i.genero_kit !== i.personaje ? 'c-rd' : 'c-gr'}`, title: `prefiere: ${NOMBRE_GENERO[i.personaje]}` }, `personaje ${NOMBRE_GENERO[i.genero_kit]}`) : el('small', { class: 'apagado' }, `prefiere ${NOMBRE_GENERO[i.personaje]}`))),
@@ -488,7 +488,7 @@ async function pintarEncuestas() {
 
 const SECCIONES_CONFIG = [
   ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
-  ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto', 'exigir_niveles'], false],
+  ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto'], false],
   ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
   ['Diploma', ['certificado_titulo', 'certificado_texto', 'certificado_titulo_pt', 'certificado_texto_pt'], false],
   ['Comunes a todos los talleres', ['responsable_nombre', 'responsable_correo', 'remitente_nombre', 'remitente_nombre_pt', 'retencion_texto', 'retencion_texto_pt', 'url_app', 'certificado_firmante', 'certificado_firmante_cargo', 'certificado_firmante_cargo_pt', 'certificado_lugar', 'certificado_logo_url', 'certificado_firma_url'], false]
@@ -497,7 +497,6 @@ const SECCIONES_CONFIG = [
 function campoConfig(k, cfg) {
   if (k === 'modo_asignacion') return [el('select', { name: k }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar')), 'Asignación de kits'];
   if (k === 'contenido') return [el('select', { name: k }, ...estado.contenidos.map((c) => el('option', { value: c.id, selected: c.id === cfg.contenido }, `${c.id} · ${c.nombre} (${c.nivel})`))), 'Contenido (kits y misiones)', `Hay ${estado.contenido.kits_total} kits en el contenido actual.`];
-  if (k === 'exigir_niveles') return [el('select', { name: k }, el('option', { value: '1', selected: cfg.exigir_niveles !== '0' }, 'Sí: para el taller N hay que haber hecho los anteriores (misma dirección de correo, edición terminada)'), el('option', { value: '0', selected: cfg.exigir_niveles === '0' }, 'No: puede apuntarse cualquiera')), 'Exigir los niveles anteriores'];
   if (k === 'color') return [el('select', { name: k }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n))), 'Color de acento'];
   if (k === 'taller_defecto') return [el('select', { name: k }, ...estado.talleres.map((tl) => el('option', { value: tl.id, selected: tl.defecto }, `${tl.id} · ${tl.nombre_taller}`))), 'Taller que abre la dirección de la app sin «?taller=»'];
   const [etiqueta, tipo] = ETIQUETA_CONFIG[k];
@@ -602,7 +601,7 @@ function pintarDatos() {
     el('p', {}, el('strong', {}, 'Inscritos por taller: '), Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno')));
   const para = el('input', { type: 'email', placeholder: 'tu@correo.es' });
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar el envío de correo'), el('div', { class: 'botones' }, para, el('button', { class: 'boton secundario', onclick: async () => { try { const r = await post('p_prueba_correo', { k: clave, para: para.value }); toast(r.enviado ? 'Correo enviado' : 'No se pudo enviar (¿sin cuota?)', r.enviado ? 'ok' : 'error'); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar prueba'))));
-  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos, progreso y encuestas de este taller; los demás talleres se conservan para reconocer a quien repite y su caso. La configuración se mantiene. Ojo: si lo borras, sus alumnos dejan de contar como veteranos en los talleres siguientes.`),
+  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos, progreso y encuestas de este taller; los demás talleres se conservan para comprobar quién hizo el nivel anterior. La configuración se mantiene. Ojo: si lo borras, sus alumnos ya no podrán inscribirse en el taller siguiente.`),
     el('button', { class: 'boton peligro', onclick: async () => {
       const texto = window.prompt('Escribe BORRAR para confirmar');
       if (texto === null) return;
