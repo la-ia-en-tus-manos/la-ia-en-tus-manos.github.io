@@ -176,10 +176,15 @@ function modalNuevoTaller(contenido) {
 }
 
 async function guardarConfig(cambios) {
+  if (cambios.estado === 'terminado' && estado.config.estado !== 'terminado') {
+    const n = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !i.diploma_enviado).length;
+    if (!window.confirm(`Al terminar el taller se envía el diploma por correo a ${n} alumno${n === 1 ? '' : 's'} con plaza, con el enlace para repetir las misiones en casa. ¿Terminar el taller?`)) return;
+  }
   try {
     const r = await post('p_config', { k: clave, config: cambios });
     estado.config = r.config;
-    toast('Guardado');
+    if (r.diplomas_error) toast(`Taller terminado, pero los diplomas no se han enviado: ${r.diplomas_error}`, 'error');
+    else toast(r.diplomas ? `Taller terminado · ${r.diplomas.enviados} diploma${r.diplomas.enviados === 1 ? '' : 's'} enviado${r.diplomas.enviados === 1 ? '' : 's'} por correo` : 'Guardado');
     await recargar();
     pintar();
   } catch (e) { toast(e.message, 'error'); }
@@ -459,7 +464,7 @@ function pintarDiplomas() {
     try { const r = await post('p_diplomas_correo', { k: clave, repetir }); toast(`Enviados ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
   };
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Diplomas'),
-    el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF. «Enviar por correo» manda a cada alumno, en su idioma, el enlace a su diploma (solo con el taller en «Terminado»).'),
+    el('p', { class: 'sub' }, 'Uno por alumno con plaza, con las medallas que lleve ganadas en este momento. «Imprimir todos» abre todos los diplomas seguidos, uno por página, para un solo trabajo de impresión o un solo PDF. Al poner el taller en «Terminado» el diploma sale solo por correo a cada alumno, en su idioma, con el enlace para repetir las misiones en casa; «Enviar por correo» es para quien quedó pendiente (por ejemplo, si faltó cuota de correo) y «Reenviar a todos», para repetirlo.'),
     el('div', { class: 'botones' },
       lista.length ? el('a', { class: 'boton c-ye', href: `certificado.html?ids=${encodeURIComponent(ids)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuPrinter'), `Imprimir todos (${lista.length})`) : null,
       lista.length ? el('button', { class: 'boton c-gr', onclick: () => enviarDiplomas(false) }, icono('LuMail'), `Enviar por correo (${pendientes.length} pendientes)`) : null,
