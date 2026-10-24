@@ -303,14 +303,19 @@ function pintarTablaVivo(caja, v) {
       avisosActivos() ? el('span', { class: 'chip c-gr', style: 'align-self:center' }, 'Notificaciones activadas') : el('button', { class: 'boton peque secundario', onclick: activarAvisos }, icono('LuBell'), 'Activar notificaciones'))));
   if (ayudas.length) caja.append(el('div', { class: 'aviso error' }, icono('LuHand'), ' ', el('strong', {}, `${ayudas.length} necesita${ayudas.length > 1 ? 'n' : ''} ayuda: `), ayudas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ')));
   if (v.estado !== 'taller_en_curso') caja.append(el('div', { class: 'aviso atencion' }, 'El taller no está en curso: los alumnos aún no ven su caso.'));
-  if (v.alumnos.length) caja.append(el('div', { class: 'tarjeta' }, el('h3', { style: 'margin:0 0 4px' }, 'Medalla para todos'),
+  if (v.alumnos.length) caja.append(el('div', { class: 'tarjeta' }, el('h3', { style: 'margin:0 0 4px' }, 'Para todos'),
     el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Para cuando toda la sala se la ha ganado. A cada alumno le salta en su app, con confeti, en unos segundos. A uno solo se la das con «Acciones».'),
     el('div', { class: 'botones' }, ...medallas.map((m) => {
       const n = v.alumnos.filter((a) => a.medallas.includes(m.id)).length;
       const quitar = n === v.alumnos.length;
       return el('button', { class: `boton ${quitar ? 'secundario' : ''} c-${m.color}`, onclick: () => medallaParaTodos(m, quitar, v.alumnos.length) },
         icono(m.icono), quitar ? `Quitar ${m.nombre} a todos` : `${m.nombre} a todos`, el('small', { style: 'margin-left:6px;opacity:.8' }, `${n}/${v.alumnos.length}`));
-    }))));
+    }), (() => {
+      const n = v.alumnos.filter((a) => a.jefe).length;
+      const quitar = n === v.alumnos.length;
+      return el('button', { class: `boton ${quitar ? 'secundario' : ''} c-ye`, onclick: () => jefeParaTodos(quitar, v.alumnos.length) },
+        icono('LuCrown'), quitar ? 'Quitar el jefe final a todos' : 'Jefe final a todos', el('small', { style: 'margin-left:6px;opacity:.8' }, `${n}/${v.alumnos.length}`));
+    })())));
 
   const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Alumno'), el('th', {}, 'Misiones'), el('th', {}, 'Medallas'), el('th', {}, 'Jefe'), el('th', {}, 'Visto'), el('th', {}, ''))));
   const cuerpo = el('tbody');
@@ -335,6 +340,15 @@ async function medallaParaTodos(m, quitar, total) {
   try {
     const r = await post('p_medalla_todos', { k: clave, medalla: m.id, quitar });
     toast(quitar ? `Medalla ${m.nombre} retirada a ${r.cambiados}` : `Medalla ${m.nombre} dada a ${r.cambiados} alumnos`);
+    await recargar(); pintar();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function jefeParaTodos(quitar, total) {
+  if (!window.confirm(quitar ? `¿Quitar la validación del jefe final a los ${total} alumnos?` : `¿Validar el jefe final a los ${total} alumnos?`)) return;
+  try {
+    const r = await post('p_jefe_todos', { k: clave, quitar });
+    toast(quitar ? `Validación retirada a ${r.cambiados}` : `Jefe final validado a ${r.cambiados} alumnos`);
     await recargar(); pintar();
   } catch (e) { toast(e.message, 'error'); }
 }

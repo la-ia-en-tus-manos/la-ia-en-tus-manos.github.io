@@ -5,7 +5,7 @@ import {
   el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, copiar, b64aBlob, descargarBlob, puedeCompartirArchivos,
   cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
 } from './ui.js';
-import { abrirTapar, celebrarMedalla } from './tapar.js';
+import { abrirTapar, celebrarMedalla, confeti } from './tapar.js';
 
 const app = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -60,6 +60,7 @@ function programarRefresco() {
     try {
       const nuevo = await get('alumno', { t: token });
       if (guardando) return;
+      const jefeNuevo = !estado.alumno.jefe && nuevo.alumno.jefe && nuevo.config.estado === 'taller_en_curso';
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
       const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha]);
       const cambio = huella(nuevo) !== huella(estado);
@@ -70,6 +71,7 @@ function programarRefresco() {
       else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar(true);
       else actualizarSuave();
       celebrarPendientes();
+      if (jefeNuevo) { confeti(); toast(t('jefe_superado') + t('jefe_validado')); }
     } catch (e) { /* siguiente intento */ }
   }, segundos * 1000);
 }
