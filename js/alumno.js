@@ -46,6 +46,7 @@ async function cargar(silencioso = false) {
   setIdioma(estado.alumno.idioma);
   document.title = `${t('titulo_1')}${t('titulo_2')}`;
   pintar();
+  celebrarPendientes();
   programarRefresco();
 }
 
@@ -68,6 +69,7 @@ function programarRefresco() {
       else if (!cambio) return;                       // nada nuevo: no se toca lo que el alumno está leyendo
       else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar(true);
       else actualizarSuave();
+      celebrarPendientes();
     } catch (e) { /* siguiente intento */ }
   }, segundos * 1000);
 }
@@ -408,7 +410,22 @@ function seccionMedallas() {
   return caja;
 }
 
+// Medallas ya celebradas en este dispositivo. Las que da el profesor desde el panel llegan con el refresco
+// y se celebran igual que las que gana el alumno en su app. La primera vez en un dispositivo no se celebran las antiguas.
+const claveVistas = () => `medallas_vistas_${token}`;
+function celebrarPendientes() {
+  if (!estado || estado.config.estado !== 'taller_en_curso' || !estado.contenido) return;
+  const ganadas = estado.progreso.medallas || [];
+  const vistas = leerLocal(claveVistas());
+  if (!Array.isArray(vistas)) { guardarLocal(claveVistas(), ganadas); return; }
+  const nueva = ganadas.find((id) => !vistas.includes(id));
+  const medalla = nueva && estado.contenido.medallas.find((m) => m.id === nueva);
+  if (medalla) medallaGanada(medalla, estado.progreso);
+}
+
 function medallaGanada(medalla, progreso) {
+  const vistas = leerLocal(claveVistas());
+  guardarLocal(claveVistas(), [...new Set([...(Array.isArray(vistas) ? vistas : []), medalla.id])]);
   estado.progreso = progreso;
   estado.contenido.medallas = estado.contenido.medallas.map((m) => (m.id === medalla.id ? medalla : m));
   celebrarMedalla(medalla, () => {
