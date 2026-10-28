@@ -104,9 +104,14 @@ function pintarInicio() {
     dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
       el('div', { class: 'apagado', style: 'font-size:0.85rem' }, `Dirección propia de este taller. La general (${base}/) abre ${esDefecto ? 'este taller' : 'el taller por defecto'} o, si hay varios abiertos, deja elegir.`)),
     dato('Videollamada (Meet)', cfg.reunion_url
-      ? [el('a', { href: cfg.reunion_url, target: '_blank', style: 'word-break:break-all' }, cfg.reunion_url), el('br'),
-        el('button', { class: 'boton peque c-gr', style: 'margin-top:6px', onclick: enviarReunion }, icono('LuVideo'), 'Enviar el enlace a los inscritos'), ' ',
-        el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'cambiar')]
+      ? [el('a', { href: cfg.reunion_url, target: '_blank', style: 'word-break:break-all' }, cfg.reunion_url), ' ',
+        el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'cambiar'), el('br'),
+        cfg.reunion_visible === '1' ? el('span', { class: 'chip c-gr' }, 'visible en la app') : el('span', { class: 'chip' }, 'oculto en la app'), el('br'),
+        el('div', { class: 'botones', style: 'margin:6px 0 0' },
+          el('button', { class: `boton peque ${cfg.reunion_visible === '1' ? 'secundario' : 'c-gr'}`, onclick: () => guardarConfig({ reunion_visible: cfg.reunion_visible === '1' ? '0' : '1' }) },
+            icono(cfg.reunion_visible === '1' ? 'LuEyeOff' : 'LuEye'), cfg.reunion_visible === '1' ? 'Ocultarlo en la app' : 'Mostrarlo en la app'),
+          el('button', { class: 'boton peque secundario', onclick: enviarReunion }, icono('LuMail'), 'Enviarlo por correo')),
+        el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Nadie lo ve ni lo recibe hasta que pulses uno de los dos botones.')]
       : [el('span', { class: 'apagado' }, 'Sin enlace'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'ponerlo')]),
     dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos')),
     dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados'))));
