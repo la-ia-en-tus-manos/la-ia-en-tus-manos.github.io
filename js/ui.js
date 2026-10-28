@@ -51,7 +51,8 @@ export function modal(contenido, opciones = {}) {
   const fondo = el('div', { class: 'modal-fondo' }, caja);
   const cerrar = () => fondo.remove();
   fondo.addEventListener('click', (e) => { if (e.target === fondo && !opciones.fijo) cerrar(); });
-  (Array.isArray(contenido) ? contenido : [contenido]).forEach((c) => caja.append(c));
+  // append nativo pinta «null» y «undefined» como texto: se quitan los huecos (p. ej. el botón de ayuda cuando no la hay).
+  (Array.isArray(contenido) ? contenido : [contenido]).filter((c) => c !== null && c !== undefined && c !== false).forEach((c) => caja.append(c));
   if (!opciones.sinCerrar) caja.append(el('div', { class: 'botones' }, el('button', { class: 'boton fantasma bloque', onclick: cerrar }, opciones.textoCerrar || 'Cerrar')));
   document.body.append(fondo);
   pintarIconos(caja);
