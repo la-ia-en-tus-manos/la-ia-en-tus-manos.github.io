@@ -157,6 +157,7 @@ function pintarPrevio() {
     el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, t('cancelar_plaza'))
   );
   app.append(extras);
+  app.append(enlaceMisDatos());
   pintarIconos(app);
 }
 
@@ -350,6 +351,11 @@ function pintarTaller() {
   }
   app.append(barraAyuda());
   pintarIconos(app);
+}
+
+function enlaceMisDatos() {
+  if (estado.alumno.demo) return el('span');
+  return el('p', { style: 'text-align:center;margin:20px 0' }, el('a', { href: `datos.html?t=${encodeURIComponent(token)}`, class: 'apagado' }, icono('LuShieldCheck', 'inline'), ' ', t('mis_datos')));
 }
 
 // Taller online: enlace de la videollamada, solo para quien tiene plaza (o el demo del profesor).
@@ -676,6 +682,7 @@ function pintarCierre() {
     app.append(formularioCierre());
   }
   if (c && c.kit) app.append(tarjetaPersonaje(), seccionRepiteEnCasa());
+  app.append(enlaceMisDatos());
   pintarIconos(app);
 }
 
