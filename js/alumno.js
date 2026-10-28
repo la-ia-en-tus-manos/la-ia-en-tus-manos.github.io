@@ -166,6 +166,7 @@ function seccionPrevias() {
   const faltan = previas.filter((p) => !hechas.includes(p.id));
   const caja = el('div', { class: 'tarjeta' });
   caja.append(pildora(t('preparacion', { hechas: previas.length - faltan.length, total: previas.length })), el('h2', {}, t('previas')), el('p', { class: 'sub' }, t('previas_txt')));
+  if (faltan.length) caja.append(el('div', { class: 'aviso atencion' }, icono('LuInfo', 'inline'), ' ', t('previas_aviso')));
   caja.append(el('div', { class: 'barra' }, el('div', { style: `width:${Math.round(100 * (previas.length - faltan.length) / previas.length)}%` })));
   caja.append(el('p', { class: faltan.length ? 'apagado' : 'acento' }, faltan.length ? t('te_falta', { lista: faltan.map((p) => p.titulo.toLowerCase()).join(', ') }) : t('todo_listo')));
   previas.forEach((p, i) => {
