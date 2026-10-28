@@ -16,7 +16,7 @@ const TITULO_BASE = document.title;
 const ETIQUETA_CONFIG = {
   nombre_taller: ['Nombre del taller', 'text'], nombre_taller_pt: ['Nombre del taller · en portugués', 'text'], numero_taller: ['Número de taller', 'text'], nivel: ['Nivel', 'text'], nivel_pt: ['Nivel · en portugués', 'text'],
   fecha: ['Fecha', 'date'], hora_inicio: ['Hora de inicio', 'time'], duracion_min: ['Duración (minutos)', 'number'],
-  lugar: ['Lugar', 'text'], direccion: ['Dirección', 'text'], mapa_url: ['Enlace al mapa', 'url'],
+  lugar: ['Lugar', 'text'], direccion: ['Dirección', 'text'], mapa_url: ['Enlace al mapa', 'url'], reunion_url: ['Enlace de la videollamada (Google Meet)', 'url'],
   plazas: ['Plazas', 'number'], kits_activos: ['Kits activos', 'number'], max_espera: ['Máximo en lista de espera', 'number'],
   mensaje_espera: ['Mensaje en la pantalla de espera', 'textarea'], pista_caso: ['Pista del caso bloqueado', 'textarea'],
   whatsapp_url: ['Enlace del grupo de WhatsApp', 'url'],
@@ -103,6 +103,11 @@ function pintarInicio() {
     dato('Usuario demo (para enseñar en pantalla)', fichaDemo()),
     dato('Enlace de inscripción', el('a', { href: enlace, target: '_blank', style: 'word-break:break-all' }, enlace), ' ', el('button', { class: 'boton fantasma peque', onclick: () => navigator.clipboard.writeText(enlace).then(() => toast('Enlace copiado')) }, icono('LuCopy'), 'Copiar'),
       el('div', { class: 'apagado', style: 'font-size:0.85rem' }, `Dirección propia de este taller. La general (${base}/) abre ${esDefecto ? 'este taller' : 'el taller por defecto'} o, si hay varios abiertos, deja elegir.`)),
+    dato('Videollamada (Meet)', cfg.reunion_url
+      ? [el('a', { href: cfg.reunion_url, target: '_blank', style: 'word-break:break-all' }, cfg.reunion_url), el('br'),
+        el('button', { class: 'boton peque c-gr', style: 'margin-top:6px', onclick: enviarReunion }, icono('LuVideo'), 'Enviar el enlace a los inscritos'), ' ',
+        el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'cambiar')]
+      : [el('span', { class: 'apagado' }, 'Sin enlace'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'ponerlo')]),
     dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos')),
     dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados'))));
 
@@ -116,6 +121,12 @@ function pintarInicio() {
     el('div', { class: 'tarjeta kpi c-ye' }, el('b', {}, `${oc.espera}/${cfg.max_espera}`), el('small', {}, 'en lista de espera')),
     el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, estado.inscritos.filter((i) => i.estado === 'plaza' && i.previas === i.previas_total).length), el('small', {}, 'preparados del todo')),
     el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
+}
+
+async function enviarReunion() {
+  const n = estado.inscritos.filter((i) => i.estado === 'plaza').length;
+  if (!window.confirm(`¿Enviar el enlace de la videollamada a los ${n} alumnos con plaza? Les llega con su enlace personal de la app.`)) return;
+  try { const r = await post('p_reunion_correo', { k: clave }); toast(`Enlace enviado a ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
 }
 
 // Alumno de pega del profesor: abre la app como un participante con el kit elegido, sin ocupar plaza ni contar.
@@ -522,7 +533,7 @@ async function pintarEncuestas() {
 /* ───────────── Configuración ───────────── */
 
 const SECCIONES_CONFIG = [
-  ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
+  ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'reunion_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
   ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto'], false],
   ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
   ['Diploma', ['certificado_titulo', 'certificado_texto', 'certificado_titulo_pt', 'certificado_texto_pt'], false],

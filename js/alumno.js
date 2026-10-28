@@ -152,6 +152,7 @@ function pintarPrevio() {
     el('p', {}, el('strong', {}, t('vendras_con')), nombreModo(a.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))),
     (cfg.idiomas || []).length > 1 ? el('p', {}, el('strong', {}, t('idioma')), IDIOMAS[a.idioma] || a.idioma, ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirIdioma(); } }, t('cambiar'))) : null,
     cfg.whatsapp_url ? el('p', {}, el('a', { class: 'boton secundario c-gr', href: cfg.whatsapp_url, target: '_blank', rel: 'noopener' }, icono('LuMessageCircle'), t('grupo_whatsapp'))) : null,
+    botonReunion(),
     el('p', { class: 'apagado' }, t('abre_portatil')),
     el('button', { class: 'boton fantasma peque', onclick: cancelarPlaza }, t('cancelar_plaza'))
   );
@@ -316,6 +317,8 @@ function pintarTaller() {
   app.append(cabeceraAlumno());
   app.append(el('p', { class: 'apagado' }, icono(ICONO_MODO[estado.alumno.modo]), ' ', nombreModo(estado.alumno.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))));
 
+  const reunion = botonReunion();
+  if (reunion) app.append(reunion);
   app.append(tarjetaPersonaje());
 
   app.append(seccionMedallas());
@@ -346,6 +349,14 @@ function pintarTaller() {
   }
   app.append(barraAyuda());
   pintarIconos(app);
+}
+
+// Taller online: enlace de la videollamada, solo para quien tiene plaza (o el demo del profesor).
+function botonReunion() {
+  const url = estado.config.reunion_url;
+  if (!url || !['plaza', 'demo'].includes(estado.alumno.estado)) return null;
+  return el('div', { class: 'tarjeta tinte c-gr' }, el('p', { class: 'sub', style: 'margin:0 0 10px' }, t('reunion_txt')),
+    el('a', { class: 'boton grande bloque c-gr', href: url, target: '_blank', rel: 'noopener' }, icono('LuVideo'), t('reunion_boton')));
 }
 
 function tarjetaPersonaje() {
