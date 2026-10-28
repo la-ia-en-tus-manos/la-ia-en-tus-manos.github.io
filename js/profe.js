@@ -502,10 +502,43 @@ async function pintarCorreos() {
 
 /* ───────────── Inscritos ───────────── */
 
+// Inscripción hecha por el profesor. Con el taller 2 o 3, la casilla del diploma salta el requisito del nivel anterior
+// (para quien borró sus datos y enseña su diploma).
+function inscribirAMano() {
+  const cfg = estado.config;
+  const campo = (etiqueta, nodo) => el('label', { class: 'campo' }, el('span', {}, etiqueta), nodo);
+  const nombre = el('input', { type: 'text', required: true, placeholder: 'Nombre y apellidos' });
+  const correo = el('input', { type: 'email', required: true });
+  const telefono = el('input', { type: 'tel' });
+  const modo = el('select', {}, ...['ambos', 'portatil', 'movil'].map((m) => el('option', { value: m }, NOMBRE_MODO[m])));
+  const idioma = el('select', {}, el('option', { value: 'es' }, 'Español'), el('option', { value: 'pt-BR' }, 'Portugués (Brasil)'));
+  const personaje = el('select', {}, el('option', { value: 'x' }, 'Indiferente'), el('option', { value: 'f' }, 'Mujer'), el('option', { value: 'm' }, 'Hombre'));
+  const diploma = el('input', { type: 'checkbox' });
+  const consentimiento = el('input', { type: 'checkbox' });
+  const nivelAnterior = +cfg.numero_taller > 1;
+  const { cerrar } = modal([
+    el('h2', {}, `Inscribir a mano en ${cfg.taller_id}`),
+    el('p', { class: 'sub' }, 'Recibe el correo de inscripción como cualquier otro alumno, en su idioma.'),
+    campo('Nombre y apellidos (como en el diploma)', nombre), campo('Correo', correo), campo('Teléfono (opcional)', telefono),
+    campo('Vendrá con', modo), campo('Idioma', idioma), campo('Personaje', personaje),
+    nivelAnterior ? el('label', { class: 'casilla' }, diploma, el('span', {}, `Ha mostrado el diploma del nivel anterior (no consta en la app porque borró sus datos): se le inscribe sin comprobar el Taller ${+cfg.numero_taller - 1}.`)) : null,
+    el('label', { class: 'casilla' }, consentimiento, el('span', {}, 'Tiene su consentimiento para guardar sus datos durante el taller.')),
+    el('div', { class: 'botones' }, el('button', { class: 'boton c-gr', onclick: async () => {
+      try {
+        const r = await post('p_inscribir_mano', { k: clave, nombre: nombre.value.trim(), correo: correo.value.trim(), telefono: telefono.value.trim(), modo: modo.value,
+          idioma: idioma.value, personaje: personaje.value, diploma_visto: diploma.checked, consentimiento: consentimiento.checked });
+        toast(r.estado === 'plaza' ? `Inscrito con plaza (caso ${r.kit})` : 'Inscrito en lista de espera');
+        cerrar(); await recargar(); pintar();
+      } catch (e) { toast(e.message, 'error'); }
+    } }, icono('LuUserPlus'), 'Inscribir'))
+  ]);
+}
+
 function pintarInscritos() {
   const cfg = estado.config;
   const lista = estado.inscritos;
   app.append(el('div', { class: 'botones' },
+    el('button', { class: 'boton', onclick: inscribirAMano }, icono('LuUserPlus'), 'Inscribir a mano'),
     el('button', { class: 'boton secundario', onclick: avisarTodos }, icono('LuMail'), 'Avisar por correo'),
     el('button', { class: 'boton secundario', onclick: async () => { try { const r = await get('p_csv', { k: clave }); descargarBlob(new Blob(['﻿' + r.csv], { type: 'text/csv;charset=utf-8' }), r.nombre); } catch (e) { toast(e.message, 'error'); } } }, icono('LuDownload'), 'Exportar CSV'),
     el('button', { class: 'boton fantasma', onclick: () => recargar(false) }, icono('LuRefreshCw'), 'Actualizar')));

@@ -156,7 +156,10 @@ function formulario(esEspera) {
       pintarIconos(app);
     } catch (err) {
       mostrarError(aviso, err.message);
-      if (err.codigo === 412) aviso.append(el('div', { style: 'margin-top:10px' }, el('a', { class: 'boton secundario peque', href: window.TALLER_FIJO ? '../' : './' }, icono('LuArrowLeft'), t('ver_talleres'))));
+      if (err.codigo === 412) {
+        if (pub.responsable_correo) aviso.append(el('p', { style: 'margin:10px 0 0' }, t('requisito_diploma', { correo: pub.responsable_correo })));
+        aviso.append(el('div', { style: 'margin-top:10px' }, el('a', { class: 'boton secundario peque', href: window.TALLER_FIJO ? '../' : './' }, icono('LuArrowLeft'), t('ver_talleres'))));
+      }
       boton.disabled = false;
       boton.textContent = esEspera ? t('apuntarme_espera') : t('apuntarme');
     }
