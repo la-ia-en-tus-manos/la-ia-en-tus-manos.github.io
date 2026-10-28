@@ -76,9 +76,9 @@ function pintar() {
     el('div', { style: 'text-align:right' }, el('span', { class: `chip c-${cfg.estado === 'taller_en_curso' ? 'gr' : cfg.estado === 'inscripcion_abierta' ? 'cy' : 'ye'}` }, NOMBRE_ESTADO[cfg.estado]), el('br'),
       el('button', { class: 'boton fantasma peque', style: 'margin-top:8px', onclick: () => { clave = ''; sessionStorage.removeItem('profe_clave'); pintarAcceso(); } }, 'Salir'))));
   app.append(navegacionTalleres(cfg));
-  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['encuestas', 'Encuestas'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
+  const pestanas = [['inicio', 'Inicio'], ['vivo', 'En vivo'], ['inscritos', 'Inscritos'], ['diplomas', 'Diplomas'], ['encuestas', 'Encuestas'], ['correos', 'Correos'], ['config', 'Configuración'], ['secretos', 'Secretos'], ['soluciones', 'Soluciones'], ['datos', 'Datos']];
   app.append(el('div', { class: 'pestanas' }, ...pestanas.map(([id, nombre]) => el('button', { class: id === pestana ? 'activa' : '', onclick: () => { pestana = id; guardarLocal('profe_pestana', id); pintar(); } }, nombre))));
-  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, encuestas: pintarEncuestas, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
+  ({ inicio: pintarInicio, vivo: pintarVivo, inscritos: pintarInscritos, diplomas: pintarDiplomas, encuestas: pintarEncuestas, correos: pintarCorreos, config: pintarConfig, secretos: pintarSecretos, soluciones: pintarSoluciones, datos: pintarDatos })[pestana]();
   pintarIconos(app);
 }
 
@@ -110,8 +110,8 @@ function pintarInicio() {
         el('div', { class: 'botones', style: 'margin:6px 0 0' },
           el('button', { class: `boton peque ${cfg.reunion_visible === '1' ? 'secundario' : 'c-gr'}`, onclick: () => guardarConfig({ reunion_visible: cfg.reunion_visible === '1' ? '0' : '1' }) },
             icono(cfg.reunion_visible === '1' ? 'LuEyeOff' : 'LuEye'), cfg.reunion_visible === '1' ? 'Ocultarlo en la app' : 'Mostrarlo en la app'),
-          el('button', { class: 'boton peque secundario', onclick: enviarReunion }, icono('LuMail'), 'Enviarlo por correo')),
-        el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Nadie lo ve ni lo recibe hasta que pulses uno de los dos botones.')]
+          el('button', { class: 'boton peque secundario', onclick: ir('correos') }, icono('LuMail'), 'Enviarlo por correo')),
+        el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Nadie lo ve ni lo recibe hasta que lo muestres en la app o lo envíes desde la pestaña Correos.')]
       : [el('span', { class: 'apagado' }, 'Sin enlace'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('config')(); } }, 'ponerlo')]),
     dato('Correos', el('b', {}, estado.cuota_correo), ' disponibles hoy', el('br'), el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('inscritos')(); } }, 'avisar a los inscritos')),
     dato('Secretos', faltanSecretos ? [el('span', { class: 'chip c-ye' }, 'faltan'), ' ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); ir('secretos')(); } }, 'ponerlos')] : el('span', { class: 'chip c-gr' }, 'configurados'))));
@@ -126,12 +126,6 @@ function pintarInicio() {
     el('div', { class: 'tarjeta kpi c-ye' }, el('b', {}, `${oc.espera}/${cfg.max_espera}`), el('small', {}, 'en lista de espera')),
     el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, estado.inscritos.filter((i) => i.estado === 'plaza' && i.previas === i.previas_total).length), el('small', {}, 'preparados del todo')),
     el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
-}
-
-async function enviarReunion() {
-  const n = estado.inscritos.filter((i) => i.estado === 'plaza').length;
-  if (!window.confirm(`¿Enviar el enlace de la videollamada a los ${n} alumnos con plaza? Les llega con su enlace personal de la app.`)) return;
-  try { const r = await post('p_reunion_correo', { k: clave }); toast(`Enlace enviado a ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
 }
 
 // Alumno de pega del profesor: abre la app como un participante con el kit elegido, sin ocupar plaza ni contar.
@@ -395,6 +389,115 @@ function accionesAlumno(a) {
       return el('button', { class: `boton peque ${tiene ? '' : 'fantasma'} c-${m.color}`, onclick: () => accion({ accion: 'mision', mision: m.id, quitar: tiene }) }, m.id);
     }))
   ]);
+}
+
+/* ───────────── Correos ───────────── */
+
+let correosEdicion = null;   // edición elegida en la pestaña Correos (independiente de la de arriba)
+
+async function pintarCorreos() {
+  const caja = el('div'); app.append(caja);
+  cargarInicio(caja, 'Cargando talleres…');
+  let d;
+  try { d = await get('p_talleres', { k: clave }); } catch (e) { vaciar(caja).append(el('div', { class: 'aviso error' }, e.message)); return; }
+  vaciar(caja);
+  const lista = d.talleres.slice().sort((a, b) => (+a.numero_taller - +b.numero_taller) || a.taller_id.localeCompare(b.taller_id));
+  if (!correosEdicion || !lista.some((c) => c.taller_id === correosEdicion)) correosEdicion = estado.config.taller_id;
+  const cfg = lista.find((c) => c.taller_id === correosEdicion) || lista[0];
+  const n = d.plazas[cfg.taller_id] || 0;
+  const def = d.correo_defecto;
+  const guardarEn = async (cambios, mensaje) => {
+    try { await post('p_config', { k: clave, taller: cfg.taller_id, config: cambios }); toast(mensaje || 'Guardado'); if (cfg.taller_id === estado.config.taller_id) await recargar(); pintar(); }
+    catch (e) { toast(e.message, 'error'); }
+  };
+  const selector = el('select', { onchange: (e) => { correosEdicion = e.target.value; pintar(); } },
+    ...lista.map((c) => el('option', { value: c.taller_id, selected: c.taller_id === cfg.taller_id },
+      `Taller ${c.numero_taller} · ${c.nivel} — ${c.taller_id} (${NOMBRE_ESTADO[c.estado] || c.estado}${c.fecha ? ` · ${c.fecha}` : ''})`)));
+  const campo = (etiqueta, nodo, ayuda) => el('label', { class: 'campo' }, el('span', {}, etiqueta), nodo, ayuda ? el('span', { class: 'ayuda' }, ayuda) : null);
+  const reunion = el('input', { type: 'url', value: cfg.reunion_url || '', placeholder: 'https://meet.google.com/...' });
+  const asunto = el('input', { type: 'text', value: cfg.correo_asunto || def.es.asunto });
+  const cuerpo = el('textarea', { rows: 12 }, cfg.correo_cuerpo || def.es.cuerpo);
+  const asuntoPt = el('input', { type: 'text', value: cfg.correo_asunto_pt || def['pt-BR'].asunto });
+  const cuerpoPt = el('textarea', { rows: 12 }, cfg.correo_cuerpo_pt || def['pt-BR'].cuerpo);
+  const valores = () => ({ reunion_url: reunion.value.trim(),
+    correo_asunto: asunto.value.trim() === def.es.asunto ? '' : asunto.value.trim(), correo_cuerpo: cuerpo.value.trim() === def.es.cuerpo ? '' : cuerpo.value.trim(),
+    correo_asunto_pt: asuntoPt.value.trim() === def['pt-BR'].asunto ? '' : asuntoPt.value.trim(), correo_cuerpo_pt: cuerpoPt.value.trim() === def['pt-BR'].cuerpo ? '' : cuerpoPt.value.trim() });
+  const prueba = el('input', { type: 'email', value: estado.config.responsable_correo || '', placeholder: 'tu correo' });
+  const idiomaPrueba = el('select', {}, el('option', { value: 'es' }, 'en español'), el('option', { value: 'pt-BR' }, 'en portugués'));
+  const cuando = el('input', { type: 'datetime-local', value: cfg.correo_programado || '' });
+  const reloj = d.reloj ? new Date(d.reloj.replace(' ', 'T')) : null;
+  const relojVivo = reloj && Date.now() - reloj.getTime() < 40 * 60 * 1000;
+
+  caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Correo a los inscritos'),
+    el('p', { class: 'sub' }, 'Elige el taller y la edición. El correo llega a cada alumno con plaza, en su idioma, con el botón de la videollamada (si pones el enlace) y el de su enlace personal de la app.'),
+    campo('Taller y edición', selector, `${n} alumno${n === 1 ? '' : 's'} con plaza en esta edición.`),
+    campo('Enlace de la videollamada (Google Meet)', reunion, 'Vacío: el correo sale sin el botón de la videollamada. Ponerlo aquí no lo muestra en la app.'),
+    campo('Asunto', asunto),
+    campo('Texto', cuerpo, 'Valen {nombre}, {taller}, {nivel}, {fecha} y {hora}: se cambian por los de cada alumno y de esta edición. Deja una línea en blanco entre párrafos.'),
+    el('details', { class: 'seccion-config' }, el('summary', {}, 'Versión en portugués (para los alumnos de Brasil)'), campo('Asunto', asuntoPt), campo('Texto', cuerpoPt)),
+    el('div', { class: 'botones' },
+      el('button', { class: 'boton', onclick: () => guardarEn(valores()) }, icono('LuSave'), 'Guardar'),
+      el('button', { class: 'boton fantasma', onclick: () => { asunto.value = def.es.asunto; cuerpo.value = def.es.cuerpo; asuntoPt.value = def['pt-BR'].asunto; cuerpoPt.value = def['pt-BR'].cuerpo; toast('Texto predefinido recuperado: pulsa Guardar'); } }, icono('LuRotateCcw'), 'Volver al texto predefinido'))));
+
+  caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar'),
+    el('div', { class: 'botones', style: 'align-items:center' }, prueba, idiomaPrueba,
+      el('button', { class: 'boton secundario', onclick: async () => {
+        try { await post('p_config', { k: clave, taller: cfg.taller_id, config: valores() }); await post('p_correo_inscritos', { k: clave, taller: cfg.taller_id, prueba: prueba.value.trim(), idioma_prueba: idiomaPrueba.value }); toast('Prueba enviada'); }
+        catch (e) { toast(e.message, 'error'); }
+      } }, icono('LuSend'), 'Enviarme una prueba')),
+    el('p', { class: 'apagado' }, 'Guarda el texto y te lo envía a ti como lo recibirá un alumno, con un nombre de prueba.')));
+
+  caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Enviar'),
+    cfg.correo_enviado ? el('p', {}, el('span', { class: 'chip c-gr' }, `último envío: ${fechaHora(cfg.correo_enviado)}`)) : null,
+    el('div', { class: 'botones' },
+      el('button', { class: 'boton c-gr', disabled: !n, onclick: async () => {
+        if (!window.confirm(`¿Enviar ahora este correo a los ${n} alumnos con plaza de ${cfg.taller_id}?`)) return;
+        try { await post('p_config', { k: clave, taller: cfg.taller_id, config: valores() }); const r = await post('p_correo_inscritos', { k: clave, taller: cfg.taller_id }); toast(`Enviado a ${r.enviados} de ${r.total}`); pintar(); }
+        catch (e) { toast(e.message, 'error'); }
+      } }, icono('LuMail'), `Enviar ahora a ${n} alumno${n === 1 ? '' : 's'}`)),
+    el('h3', { style: 'margin-top:18px' }, 'O programarlo'),
+    cfg.correo_programado
+      ? el('p', {}, el('span', { class: 'chip c-ye' }, `programado para ${cfg.correo_programado.replace('T', ' a las ')}`), ' ',
+        el('button', { class: 'boton peque fantasma', onclick: () => guardarEn({ correo_programado: '' }, 'Programación cancelada') }, 'Cancelar la programación'))
+      : null,
+    el('div', { class: 'botones', style: 'align-items:center' }, cuando,
+      el('button', { class: 'boton secundario', onclick: () => {
+        if (!cuando.value) return toast('Elige el día y la hora', 'error');
+        guardarEn({ ...valores(), correo_programado: cuando.value.slice(0, 16) }, 'Envío programado');
+      } }, icono('LuClock'), cfg.correo_programado ? 'Cambiar la hora' : 'Programar el envío')),
+    el('p', { class: 'apagado' }, 'Hora de Madrid. Saldrá con el texto guardado en ese momento, a los alumnos que tengan plaza entonces.'),
+    relojVivo
+      ? el('div', { class: 'aviso ok' }, `Reloj de envíos activo (última comprobación ${haceCuanto(d.reloj)}).`)
+      : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Reloj de envíos sin activar. '),
+        'Para que el envío programado y los recordatorios salgan aunque no abras el panel, actívalo una vez en Apps Script: Activadores (el reloj de la izquierda) → Añadir activador → función «revisarEnviosProgramados» → «Según el tiempo» → cada 15 minutos → Guardar. Mientras tanto, salen la primera vez que abras el panel después de la hora.')));
+
+  // Recordatorios de preparación: métrica y reglas de esta edición.
+  const prep = d.preparacion[cfg.taller_id] || [];
+  const sinPreparar = prep.filter((x) => x.hechas < x.total);
+  const numero = (k, def) => el('input', { type: 'number', min: 1, max: 999, value: cfg[k] || def, style: 'width:90px' });
+  const activo = el('select', {}, el('option', { value: '1', selected: cfg.recordatorio_activo !== '0' }, 'Activados'), el('option', { value: '0', selected: cfg.recordatorio_activo === '0' }, 'Desactivados'));
+  const primero = numero('recordatorio_primero_dias', '3'), cada = numero('recordatorio_cada_dias', '7'), final = numero('recordatorio_final_dias', '7'), finalCada = numero('recordatorio_final_cada_dias', '3');
+  const fila = (...cosas) => el('div', { class: 'botones', style: 'align-items:center;margin:6px 0' }, ...cosas);
+  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Alumno'), el('th', {}, 'Preparación'), el('th', {}, 'Recordatorios'), el('th', {}, 'Último'))),
+    el('tbody', {}, ...prep.slice().sort((a, b) => (a.hechas / a.total) - (b.hechas / b.total)).map((x) => el('tr', {},
+      el('td', {}, el('strong', {}, x.numero)), el('td', {}, x.nombre),
+      el('td', {}, x.hechas >= x.total ? el('span', { class: 'chip c-gr' }, 'preparado') : [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${Math.round(100 * x.hechas / Math.max(1, x.total))}%` })), el('small', {}, `${x.hechas} de ${x.total}`)]),
+      el('td', {}, String(x.recordatorios)), el('td', {}, x.ultimo ? el('small', {}, fechaHora(x.ultimo)) : el('small', { class: 'apagado' }, '—'))))));
+  caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Recordatorios de preparación'),
+    el('p', { class: 'sub' }, `${prep.length - sinPreparar.length} de ${prep.length} alumnos con plaza tienen hechas todas las misiones previas. A los demás les llega un correo con lo que les falta, hasta el día antes del taller${cfg.fecha ? ` (${cfg.fecha})` : ''}, mientras la inscripción esté abierta o cerrada.`),
+    prep.length ? el('div', { class: 'tabla-scroll' }, tabla) : null,
+    el('h3', { style: 'margin-top:16px' }, 'Reglas de esta edición'),
+    fila('Recordatorios', activo),
+    fila('El primero, a los', primero, 'días de inscribirse.'),
+    fila('Después, uno cada', cada, 'días.'),
+    fila('En los', final, 'días antes del taller, uno cada', finalCada, 'días.'),
+    el('div', { class: 'botones' },
+      el('button', { class: 'boton', onclick: () => guardarEn({ recordatorio_activo: activo.value, recordatorio_primero_dias: primero.value, recordatorio_cada_dias: cada.value, recordatorio_final_dias: final.value, recordatorio_final_cada_dias: finalCada.value }, 'Reglas guardadas') }, icono('LuSave'), 'Guardar las reglas'),
+      el('button', { class: 'boton c-ye', disabled: !sinPreparar.length, onclick: async () => {
+        if (!window.confirm(`¿Enviar ahora el recordatorio a los ${sinPreparar.length} alumnos que no están preparados?`)) return;
+        try { const r = await post('p_recordatorios', { k: clave, taller: cfg.taller_id }); toast(`Recordatorio enviado a ${r.enviados} de ${r.total}`); pintar(); } catch (e) { toast(e.message, 'error'); }
+      } }, icono('LuBellRing'), `Recordar ahora a ${sinPreparar.length}`))));
+  pintarIconos(caja);
 }
 
 /* ───────────── Inscritos ───────────── */
