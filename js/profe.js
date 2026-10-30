@@ -426,7 +426,7 @@ async function pintarCorreos() {
   const idiomaPrueba = el('select', {}, el('option', { value: 'es' }, 'en español'), el('option', { value: 'pt-BR' }, 'en portugués'));
   const cuando = el('input', { type: 'datetime-local', value: cfg.correo_programado || '' });
   const reloj = d.reloj ? new Date(d.reloj.replace(' ', 'T')) : null;
-  const relojVivo = reloj && Date.now() - reloj.getTime() < 40 * 60 * 1000;
+  const relojVivo = reloj && Date.now() - reloj.getTime() < 13 * 3600 * 1000;
 
   caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Correo a los inscritos'),
     el('p', { class: 'sub' }, 'Elige el taller y la edición. El correo llega a cada alumno con plaza, en su idioma, con el botón de la videollamada (si pones el enlace) y el de su enlace personal de la app.'),
@@ -469,7 +469,7 @@ async function pintarCorreos() {
     relojVivo
       ? el('div', { class: 'aviso ok' }, `Reloj de envíos activo (última comprobación ${haceCuanto(d.reloj)}).`)
       : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Reloj de envíos sin activar. '),
-        'Para que el envío programado y los recordatorios salgan aunque no abras el panel, actívalo una vez en Apps Script: Activadores (el reloj de la izquierda) → Añadir activador → función «revisarEnviosProgramados» → «Según el tiempo» → cada 15 minutos → Guardar. Mientras tanto, salen la primera vez que abras el panel después de la hora.')));
+        'Para que el envío programado y los recordatorios salgan aunque no abras el panel, actívalo una vez en Apps Script: Activadores (el reloj de la izquierda) → Añadir activador → función «revisarEnviosProgramados» → «Según el tiempo» → «Temporizador por horas» → cada 12 horas → Guardar. Mientras tanto, salen la primera vez que abras el panel después de la hora.')));
 
   // Recordatorios de preparación: métrica y reglas de esta edición.
   const prep = d.preparacion[cfg.taller_id] || [];
