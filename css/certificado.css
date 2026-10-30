@@ -69,6 +69,8 @@ body { overflow-x: auto; }
 .dip-firma small { color: var(--txt3); font-size: 12px; }
 .dip-fecha { font-size: 14px; color: var(--txt2); }
 .dip-fecha b { display: block; color: var(--txt); }
+.dip-codigo { display: block; margin-top: 3mm; font-size: 12px; letter-spacing: 0.04em; }
+.dip-codigo b { display: inline; font-family: ui-monospace, Consolas, monospace; letter-spacing: 0.08em; }
 
 @page { size: A4 landscape; margin: 0; }
 @media print {

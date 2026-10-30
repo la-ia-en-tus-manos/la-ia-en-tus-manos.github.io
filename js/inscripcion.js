@@ -109,11 +109,13 @@ function formulario(esEspera) {
   const form = el('form', { class: 'tarjeta', novalidate: true, autocomplete: 'on' });
   const aviso = el('div', { class: 'aviso error oculto', role: 'alert' });
   const modos = [['movil', 'modo_movil_sub'], ['portatil', 'modo_portatil_sub'], ['ambos', 'modo_ambos_sub']];
+  const pideCodigo = +pub.numero_taller > 1 && pub.exigir_niveles === '1';
   form.append(
     el('h2', {}, esEspera ? t('apuntate_espera') : t('reserva')),
     el('label', { class: 'campo' }, el('span', {}, t('nombre')), el('input', { type: 'text', name: 'nombre', required: true, autocomplete: 'name', placeholder: t('nombre_ph') })),
     el('label', { class: 'campo' }, el('span', {}, t('correo')), el('input', { type: 'email', name: 'correo', required: true, autocomplete: 'email', inputmode: 'email', placeholder: t('correo_ph') })),
     el('label', { class: 'campo' }, el('span', {}, t('telefono')), el('input', { type: 'tel', name: 'telefono', autocomplete: 'tel', inputmode: 'tel' }), el('span', { class: 'ayuda' }, t('telefono_ayuda'))),
+    pideCodigo ? el('label', { class: 'campo' }, el('span', {}, t('codigo_nivel')), el('input', { type: 'text', name: 'codigo_nivel', required: true, autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', placeholder: t('codigo_nivel_ph').replace('1', String(+pub.numero_taller - 1)) }), el('span', { class: 'ayuda' }, t('codigo_nivel_ayuda'))) : null,
     el('fieldset', { class: 'campo', style: 'border:0;padding:0;margin:0 0 18px' },
       el('legend', { style: 'font-weight:600;margin-bottom:8px' }, t('con_que')),
       el('div', { class: 'opciones tres' }, ...modos.map(([m, sub], i) =>
@@ -145,7 +147,7 @@ function formulario(esEspera) {
     boton.disabled = true;
     boton.textContent = t('enviando');
     try {
-      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn, idioma: idiomaActual(), personaje: d.personaje || 'x' });
+      const r = await post('inscribir', { nombre, correo: d.correo.trim(), telefono: d.telefono || '', modo: d.modo, consentimiento: true, avisos: !!d.avisos, web: d.web || '', ts: cargadoEn, idioma: idiomaActual(), personaje: d.personaje || 'x', codigo_nivel: (d.codigo_nivel || '').trim() });
       if (r.repetido) {
         vaciar(app).append(...cabecera().filter(Boolean), el('div', { class: 'tarjeta tinte' }, el('h2', {}, t('ya_estabas')), el('p', { class: 'sub' }, t('reenviado'))));
       } else {

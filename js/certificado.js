@@ -12,7 +12,7 @@ const acciones = document.getElementById('acciones');
 
 const DEMO = {
   idioma: 'es', nombre: 'Carmen Ruiz López', numero: '07', taller: 'La IA en tus manos', numero_taller: '1', nivel: 'Explorador', fecha_legible: '7 de noviembre de 2026',
-  misiones: 9, total_misiones: 9, jefe: true,
+  misiones: 9, total_misiones: 9, jefe: true, codigo_nivel: 'NIVEL1-7KQ3-M8TW',
   medallas: [{ id: 'ingenio', nombre: 'Ingenio', color: 'ye', icono: 'LuLightbulb', ganada: true }, { id: 'guardian', nombre: 'Guardián', color: 'cy', icono: 'LuShieldCheck', ganada: true }, { id: 'detective', nombre: 'Detective', color: 'pk', icono: 'LuSearch', ganada: false }],
   textos: { titulo: 'Diploma de Explorador', texto: 'Ha completado el taller práctico «{taller}» (Taller {numero_taller} · nivel {nivel}): cuatro horas aprendiendo a usar la inteligencia artificial con cabeza, con criterio y con cuidado de sus datos.', firmante: 'Luis Oliva', firmante_cargo: 'Ingeniero informático · ponente del taller', lugar: 'Madrid', logo_url: '' }
 };
@@ -99,7 +99,8 @@ function pintar(d, contenedor = diploma) {
         el('div', { class: 'circulo' }, m.ganada ? icono(m.icono) : '·'), el('b', {}, m.nombre), el('small', {}, m.ganada ? t('dip_conseguida') : t('dip_pendiente'))))),
       el('p', { class: 'dip-resumen' }, t('dip_resumen', { medallas: ganadas, total: d.medallas.length, misiones: d.misiones, total_misiones: d.total_misiones }), d.jefe ? ` · ${t('dip_jefe')}` : '')),
     el('div', { class: 'dip-pie' },
-      el('div', { class: 'dip-fecha' }, d.textos.lugar ? `${d.textos.lugar}, ` : '', el('b', {}, d.fecha_legible || t('fecha_por_confirmar_t'))),
+      el('div', { class: 'dip-fecha' }, d.textos.lugar ? `${d.textos.lugar}, ` : '', el('b', {}, d.fecha_legible || t('fecha_por_confirmar_t')),
+        d.codigo_nivel ? el('span', { class: 'dip-codigo' }, `${t('codigo_nivel')}: `, el('b', {}, d.codigo_nivel)) : null),
       el('div', { class: 'dip-firma' }, d.textos.firma_url ? el('img', { class: 'dip-rubrica-img', src: d.textos.firma_url, alt: '' }) : rubrica(d.textos.firmante), el('div', { class: 'linea' }), el('b', {}, d.textos.firmante), el('small', {}, d.textos.firmante_cargo)))
   );
   // append() nativo pinta «null» como texto: solo nodos reales.

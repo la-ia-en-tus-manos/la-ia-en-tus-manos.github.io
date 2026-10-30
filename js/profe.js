@@ -16,7 +16,7 @@ const TITULO_BASE = document.title;
 const ETIQUETA_CONFIG = {
   nombre_taller: ['Nombre del taller', 'text'], nombre_taller_pt: ['Nombre del taller · en portugués', 'text'], numero_taller: ['Número de taller', 'text'], nivel: ['Nivel', 'text'], nivel_pt: ['Nivel · en portugués', 'text'],
   fecha: ['Fecha', 'date'], hora_inicio: ['Hora de inicio', 'time'], duracion_min: ['Duración (minutos)', 'number'],
-  lugar: ['Lugar', 'text'], direccion: ['Dirección', 'text'], mapa_url: ['Enlace al mapa', 'url'], reunion_url: ['Enlace de la videollamada (Google Meet)', 'url'], retencion_aviso_dias: ['Días tras el taller para avisar del borrado', 'number'], retencion_plazo_dias: ['Días que tiene para pedir conservarlos', 'number'],
+  lugar: ['Lugar', 'text'], direccion: ['Dirección', 'text'], mapa_url: ['Enlace al mapa', 'url'], reunion_url: ['Enlace de la videollamada (Google Meet)', 'url'], retencion_aviso_dias: ['Días tras el taller para borrar los datos', 'number'],
   plazas: ['Plazas', 'number'], kits_activos: ['Kits activos', 'number'], max_espera: ['Máximo en lista de espera', 'number'],
   mensaje_espera: ['Mensaje en la pantalla de espera', 'textarea'], pista_caso: ['Pista del caso bloqueado', 'textarea'],
   whatsapp_url: ['Enlace del grupo de WhatsApp', 'url'],
@@ -624,7 +624,7 @@ function pintarDiplomas() {
       el('a', { class: 'boton secundario', href: 'certificado.html?demo=1', target: '_blank' }, icono('LuAward'), 'Ver muestra'))));
   if (estado.config.estado !== 'terminado' && lista.length) app.append(el('div', { class: 'aviso atencion' }, 'El envío por correo se activa con el taller en «Terminado»: hasta entonces el enlace del diploma no se abre para el alumno.'));
   if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay alumnos con plaza.'));
-  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, 'Correo'), el('th', {}, ''))));
+  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Nombre en el diploma'), el('th', {}, 'Medallas'), el('th', {}, 'Misiones'), el('th', {}, 'Jefe'), el('th', {}, 'Encuesta'), el('th', {}, 'Código de nivel'), el('th', {}, 'Correo'), el('th', {}, ''))));
   const cuerpo = el('tbody');
   lista.forEach((i) => {
     cuerpo.append(el('tr', {},
@@ -634,6 +634,7 @@ function pintarDiplomas() {
       el('td', {}, `${i.misiones.length}`),
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
+      el('td', {}, i.codigo_nivel ? el('code', {}, i.codigo_nivel) : el('span', { class: 'apagado' }, '—')),
       el('td', {}, i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
       el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
@@ -674,7 +675,7 @@ async function pintarEncuestas() {
 /* ───────────── Configuración ───────────── */
 
 const SECCIONES_CONFIG = [
-  ['Datos de los alumnos: aviso y borrado automático', ['retencion_auto', 'retencion_aviso_dias', 'retencion_plazo_dias'], false],
+  ['Datos de los alumnos: borrado automático', ['retencion_auto', 'retencion_aviso_dias'], false],
   ['Fecha, lugar y plazas', ['fecha', 'hora_inicio', 'duracion_min', 'lugar', 'direccion', 'mapa_url', 'reunion_url', 'plazas', 'kits_activos', 'max_espera', 'modo_asignacion'], true],
   ['Nombre y contenido', ['nombre_taller', 'nombre_taller_pt', 'numero_taller', 'nivel', 'nivel_pt', 'contenido', 'color', 'taller_defecto'], false],
   ['Mensajes a los alumnos', ['mensaje_espera', 'pista_caso', 'whatsapp_url', 'mensaje_espera_pt', 'pista_caso_pt'], false],
@@ -683,7 +684,7 @@ const SECCIONES_CONFIG = [
 ];
 
 function campoConfig(k, cfg) {
-  if (k === 'retencion_auto') return [el('select', { name: k }, el('option', { value: '1', selected: cfg.retencion_auto !== '0' }, 'Sí: avisar y borrar solos'), el('option', { value: '0', selected: cfg.retencion_auto === '0' }, 'No: lo hago yo')), 'Borrado automático (con el taller terminado)', 'A los días indicados tras la fecha del taller, cada alumno recibe un aviso con su diploma y un botón para conservar sus datos; si no lo pulsa, se borran y se le confirma por correo.'];
+  if (k === 'retencion_auto') return [el('select', { name: k }, el('option', { value: '1', selected: cfg.retencion_auto !== '0' }, 'Sí: borrar solos'), el('option', { value: '0', selected: cfg.retencion_auto === '0' }, 'No: lo hago yo')), 'Borrado automático (con el taller terminado)', 'A los días indicados tras la fecha del taller se borran los datos de cada alumno y se le confirma por correo, con sus diplomas en PDF y su código de nivel para apuntarse al siguiente.'];
   if (k === 'modo_asignacion') return [el('select', { name: k }, el('option', { value: 'orden', selected: cfg.modo_asignacion === 'orden' }, 'En orden (kit 1, 2, 3…)'), el('option', { value: 'aleatorio', selected: cfg.modo_asignacion === 'aleatorio' }, 'Al azar')), 'Asignación de kits'];
   if (k === 'contenido') return [el('select', { name: k }, ...estado.contenidos.map((c) => el('option', { value: c.id, selected: c.id === cfg.contenido }, `${c.id} · ${c.nombre} (${c.nivel})`))), 'Contenido (kits y misiones)', `Hay ${estado.contenido.kits_total} kits en el contenido actual.`];
   if (k === 'color') return [el('select', { name: k }, ...Object.entries(NOMBRE_COLOR).map(([c, n]) => el('option', { value: c, selected: c === cfg.color }, n))), 'Color de acento'];

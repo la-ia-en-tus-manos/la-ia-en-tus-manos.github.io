@@ -1,5 +1,5 @@
-// «Tus datos»: el alumno ve qué guardamos, descarga sus diplomas y decide conservar sus datos o borrarlos.
-// Se abre con su enlace personal (datos.html?t=…); «&accion=conservar» viene del correo de aviso.
+// «Tus datos»: el alumno ve qué guardamos, descarga sus diplomas, ve su código de nivel y puede borrarlo todo.
+// Se abre con su enlace personal (datos.html?t=…).
 import { get, post } from './api.js';
 import { t, setIdioma } from './i18n.js';
 import { el, vaciar, icono, pintarIconos, toast, cargarInicio, errorPantalla, borrarLocal } from './ui.js';
@@ -12,12 +12,10 @@ const TEXTOS = {
   es: {
     titulo: 'Tus datos', hola: 'Hola, {nombre}. Esto es lo que guardamos de ti en «La IA en tus manos»:',
     estado_plaza: 'con plaza', estado_espera: 'en lista de espera', estado_cancelado: 'inscripción cancelada',
-    diploma: 'Descargar mi diploma', borrado_previsto: 'Se borrará el {fecha} si no pides conservarlo.',
+    diploma: 'Descargar mi diploma', borrado_previsto: 'Tus datos se borrarán solos el {fecha}. Antes te enviaremos el diploma y el código por correo.',
+    codigo: 'Tu código de nivel', codigo_txt: 'Guárdalo: es lo que te pedirá la inscripción del siguiente nivel. Vale para una sola inscripción y no está unido a tu nombre ni a tu correo.',
     que_guardamos: 'Guardamos tu nombre, tu correo y tu teléfono, tu progreso (misiones previas, misiones, sellos y medallas) y tus respuestas a la encuesta. Nada más.',
-    conservar_hasta: 'Los conservamos hasta el {fecha}.', conservar_titulo: 'Conservar mis datos',
-    conservar_txt: 'Útil si vas a apuntarte al siguiente nivel: así recordamos que hiciste este. Los guardamos un año más.',
-    consecuencia: 'Si los borras, ya no sabremos que hiciste el taller: para apuntarte al siguiente nivel tendrás que escribirnos y enseñarnos tu diploma, y te inscribiremos nosotros.',
-    conservar: 'Conservar mis datos un año más', conservados: '¡Hecho! Conservamos tus datos un año más.',
+    consecuencia: 'Tu código de nivel sigue valiendo después de borrar: apúntalo antes. Si lo pierdes, escríbenos con tu diploma y te inscribiremos nosotros.',
     borrar_titulo: 'Borrar mis datos', borrar_txt: 'Borramos todo lo tuyo, en todos los talleres, y te enviamos un último correo de confirmación con un resumen de lo que hiciste y tus diplomas en PDF. Tu enlace personal dejará de funcionar.',
     borrar: 'Borrar todos mis datos', confirmar: '¿Seguro? Se borrará todo y no se puede deshacer.',
     borrados: 'Tus datos se han borrado. Te hemos enviado un correo de confirmación con tus diplomas. Gracias por participar.',
@@ -26,12 +24,10 @@ const TEXTOS = {
   'pt-BR': {
     titulo: 'Seus dados', hola: 'Olá, {nombre}. Isto é o que guardamos de você em «A IA nas suas mãos»:',
     estado_plaza: 'com vaga', estado_espera: 'na lista de espera', estado_cancelado: 'inscrição cancelada',
-    diploma: 'Baixar meu diploma', borrado_previsto: 'Será apagado em {fecha} se você não pedir para conservar.',
+    diploma: 'Baixar meu diploma', borrado_previsto: 'Seus dados serão apagados sozinhos em {fecha}. Antes enviaremos o diploma e o código por e-mail.',
+    codigo: 'Seu código de nível', codigo_txt: 'Guarde-o: é o que a inscrição do próximo nível vai pedir. Vale para uma só inscrição e não está ligado ao seu nome nem ao seu e-mail.',
     que_guardamos: 'Guardamos seu nome, seu e-mail e seu telefone, seu progresso (missões prévias, missões, carimbos e medalhas) e suas respostas à pesquisa. Nada mais.',
-    conservar_hasta: 'Conservamos até {fecha}.', conservar_titulo: 'Conservar meus dados',
-    conservar_txt: 'Útil se você vai se inscrever no próximo nível: assim lembramos que fez este. Guardamos por mais um ano.',
-    consecuencia: 'Se você apagar, não vamos mais saber que fez a oficina: para se inscrever no próximo nível, vai precisar escrever para nós e mostrar o seu diploma, e nós fazemos a inscrição.',
-    conservar: 'Conservar meus dados por mais um ano', conservados: 'Pronto! Conservamos seus dados por mais um ano.',
+    consecuencia: 'Seu código de nível continua valendo depois de apagar: anote-o antes. Se perder, escreva para nós com o seu diploma e nós fazemos a inscrição.',
     borrar_titulo: 'Apagar meus dados', borrar_txt: 'Apagamos tudo o que é seu, em todas as oficinas, e enviamos um último e-mail de confirmação com um resumo do que você fez e seus diplomas em PDF. Seu link pessoal vai deixar de funcionar.',
     borrar: 'Apagar todos os meus dados', confirmar: 'Tem certeza? Tudo será apagado e não dá para desfazer.',
     borrados: 'Seus dados foram apagados. Enviamos um e-mail de confirmação com seus diplomas. Obrigado por participar.',
@@ -49,11 +45,6 @@ async function cargar() {
   try { d = await get('mis_datos', { t: token }); } catch (e) { return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') }); }
   idioma = d.idioma === 'pt-BR' ? 'pt-BR' : 'es';
   setIdioma(idioma, false);
-  if (params.get('accion') === 'conservar') {
-    try { const r = await post('conservar_datos', { t: token }); d.conservar_hasta = r.conservar_hasta; d.ediciones.forEach((x) => { x.borrado_previsto = ''; }); toast(tx('conservados')); }
-    catch (e) { toast(e.message, 'error'); }
-    history.replaceState(null, '', `datos.html?t=${encodeURIComponent(token)}`);
-  }
   pintar(d);
 }
 
@@ -64,15 +55,10 @@ function pintar(d) {
     el('h2', {}, `${x.taller}${x.nivel ? ` · ${x.nivel}` : ''}`),
     el('p', { class: 'apagado' }, [x.fecha, tx(`estado_${x.estado}`)].filter(Boolean).join(' · ')),
     x.diploma ? el('a', { class: 'boton c-ye', href: x.diploma, target: '_blank', rel: 'noopener' }, icono('LuAward'), tx('diploma')) : null,
+    x.codigo ? el('div', { class: 'aviso ok', style: 'margin-top:12px' }, el('strong', {}, `${tx('codigo')}: `), el('code', { style: 'font-size:1.05rem;letter-spacing:.06em' }, x.codigo), el('br'), tx('codigo_txt')) : null,
     x.borrado_previsto ? el('div', { class: 'aviso atencion', style: 'margin-top:12px' }, tx('borrado_previsto', { fecha: fecha(x.borrado_previsto) })) : null)));
   app.append(el('p', { class: 'apagado' }, tx('que_guardamos')));
 
-  app.append(el('div', { class: 'tarjeta tinte c-gr' }, el('h2', {}, tx('conservar_titulo')),
-    d.conservar_hasta ? el('div', { class: 'aviso ok' }, tx('conservar_hasta', { fecha: fecha(d.conservar_hasta) })) : el('p', { class: 'sub' }, tx('conservar_txt')),
-    el('button', { class: 'boton c-gr', onclick: async () => {
-      try { const r = await post('conservar_datos', { t: token }); d.conservar_hasta = r.conservar_hasta; d.ediciones.forEach((x) => { x.borrado_previsto = ''; }); toast(tx('conservados')); pintar(d); }
-      catch (e) { toast(e.message, 'error'); }
-    } }, icono('LuShieldCheck'), tx('conservar'))));
 
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, tx('borrar_titulo')), el('p', { class: 'sub' }, tx('borrar_txt')),
     el('div', { class: 'aviso atencion', style: 'margin-bottom:12px' }, tx('consecuencia')),
