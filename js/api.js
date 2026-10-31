@@ -14,6 +14,9 @@ export function aplicarColorTaller(color) {
   if (color && color !== 'cy') document.documentElement.classList.add(`taller-${color}`);
 }
 
+// Usuario demo del panel viendo otro estado del taller: lo pide en todas sus llamadas (el servidor solo se lo acepta al demo).
+export const verEstado = new URLSearchParams(location.search).get('ver_estado') || '';
+
 export class ErrorApi extends Error {
   constructor(mensaje, codigo) { super(mensaje); this.codigo = codigo; }
 }
@@ -31,6 +34,7 @@ export async function get(accion, params = {}) {
   url.searchParams.set('a', accion);
   url.searchParams.set('idioma', idiomaActual());
   if (taller) url.searchParams.set('taller', taller);
+  if (verEstado) url.searchParams.set('ver_estado', verEstado);
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null) url.searchParams.set(k, v); });
   let r;
   try { r = await fetch(url, { method: 'GET', redirect: 'follow' }); } catch (e) { throw new ErrorApi(t('sin_conexion'), 0); }
@@ -41,7 +45,7 @@ export async function post(accion, cuerpo = {}) {
   let r;
   try {
     // text/plain evita la petición previa CORS, que Apps Script no contesta.
-    r = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: accion, idioma: idiomaActual(), ...(taller ? { taller } : {}), ...cuerpo }) });
+    r = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: accion, idioma: idiomaActual(), ...(taller ? { taller } : {}), ...(verEstado ? { ver_estado: verEstado } : {}), ...cuerpo }) });
   } catch (e) { throw new ErrorApi(t('sin_conexion'), 0); }
   return procesar(r);
 }

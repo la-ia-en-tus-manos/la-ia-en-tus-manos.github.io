@@ -134,15 +134,18 @@ function fichaDemo() {
   const kits = Array.from({ length: +estado.config.kits_activos || 20 }, (_, i) => i + 1);
   const kit = el('select', { style: 'width:auto;min-width:90px' }, ...kits.map((n) => el('option', { value: n, selected: n === (d.kit || 1) }, `Kit ${String(n).padStart(2, '0')}`)));
   const idioma = el('select', { style: 'width:auto' }, ...(estado.contenido.idiomas || ['es']).map((i) => el('option', { value: i, selected: i === (d.idioma || 'es') }, NOMBRE_IDIOMA[i] || i)));
+  const actual = estado.config.estado;
+  const verComo = el('select', { style: 'width:auto' }, el('option', { value: '' }, `Estado actual (${NOMBRE_ESTADO[actual] || actual})`),
+    ...['inscripcion_abierta', 'inscripcion_cerrada', 'taller_en_curso', 'terminado'].filter((e) => e !== actual).map((e) => el('option', { value: e }, `Como si estuviera: ${NOMBRE_ESTADO[e] || e}`)));
   const abrir = el('button', { class: 'boton peque c-vi', onclick: async () => {
     try {
       const r = await post('p_demo', { k: clave, kit: kit.value, idioma: idioma.value });
       estado.demo = r;
-      window.open(r.enlace, '_blank', 'noopener');
+      window.open(verComo.value ? `${r.enlace}${r.enlace.includes('?') ? '&' : '?'}ver_estado=${verComo.value}` : r.enlace, '_blank', 'noopener');
     } catch (e) { toast(e.message, 'error'); }
   } }, icono('LuExternalLink'), 'Abrir en pestaña nueva');
-  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, idioma, abrir),
-    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado actual del taller.'));
+  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, idioma, verComo, abrir),
+    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más.'));
 }
 
 // Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.

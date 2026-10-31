@@ -1,4 +1,4 @@
-import { get, post, aplicarColorTaller } from './api.js';
+import { get, post, aplicarColorTaller, verEstado } from './api.js';
 import { REFRESCO_ALUMNO_S } from './config.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import {
@@ -677,7 +677,7 @@ function pintarCierre() {
 
   if (estado.encuesta_hecha) {
     app.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('gracias')), t('certificado_nombre'), el('strong', {}, a.nombre_certificado || a.nombre), '.',
-      el('div', { class: 'botones', style: 'margin:12px 0 0' }, el('a', { class: 'boton c-ye', href: `certificado.html?t=${encodeURIComponent(token)}`, target: '_blank', rel: 'noopener' }, icono('LuAward'), t('ver_diploma')))));
+      el('div', { class: 'botones', style: 'margin:12px 0 0' }, el('a', { class: 'boton c-ye', href: `certificado.html?t=${encodeURIComponent(token)}${verEstado ? `&ver_estado=${verEstado}` : ''}`, target: '_blank', rel: 'noopener' }, icono('LuAward'), t('ver_diploma')))));
   } else {
     app.append(formularioCierre());
   }
