@@ -229,7 +229,8 @@ details.seccion-config[open] > summary { margin-bottom: 10px; }
 .botones { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
 
 /* Formularios */
-label.campo { display: block; margin-bottom: 18px; }
+/* También los div.campo de las escalas: sin el margen, la pregunta siguiente quedaba pegada a los botones. */
+.campo { display: block; margin-bottom: 18px; }
 label.campo > span { display: block; font-weight: 600; margin-bottom: 6px; }
 label.campo .ayuda { display: block; font-weight: 300; color: var(--txt3); font-size: 0.92rem; margin-top: 4px; }
 
