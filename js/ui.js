@@ -47,7 +47,7 @@ export function toast(mensaje, tipo = 'ok', ms = 2600) {
 }
 
 export function modal(contenido, opciones = {}) {
-  const caja = el('div', { class: `modal ${opciones.ancho ? 'ancho' : ''}`, role: 'dialog', 'aria-modal': 'true' });
+  const caja = el('div', { class: `modal ${opciones.ancho ? 'ancho' : ''} ${opciones.clase || ''}`, role: 'dialog', 'aria-modal': 'true' });
   const fondo = el('div', { class: 'modal-fondo' }, caja);
   const cerrar = () => fondo.remove();
   fondo.addEventListener('click', (e) => { if (e.target === fondo && !opciones.fijo) cerrar(); });
@@ -57,6 +57,48 @@ export function modal(contenido, opciones = {}) {
   document.body.append(fondo);
   pintarIconos(caja);
   return { cerrar, caja };
+}
+
+// Ventana de conversación tipo chat: cabecera con cierre, lista que hace scroll y la caja de escribir
+// abajo, todo en un alto fijo (la ventana no crece con los mensajes). `enviar(texto)` manda y repinta.
+export function ventanaChat({ titulo, placeholder, textoEnviar, textoCerrar, enviar }) {
+  const lista = el('div', { class: 'conversacion', role: 'log', 'aria-live': 'polite' });
+  const caja = el('textarea', { rows: 1, maxlength: 500, placeholder });
+  const boton = el('button', { class: 'boton', 'aria-label': textoEnviar, title: textoEnviar }, icono('LuSend'));
+  const mandar = async () => {
+    const texto = caja.value.trim();
+    if (!texto) return;
+    boton.disabled = true;
+    try { await enviar(texto); caja.value = ''; caja.style.height = ''; } catch (e) { toast(e.message, 'error'); }
+    boton.disabled = false;
+    caja.focus();
+  };
+  boton.onclick = mandar;
+  // Con teclado físico, Intro envía y Mayús+Intro salta de línea; en el móvil, Intro salta de línea y se envía con el botón.
+  caja.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(pointer: fine)').matches) { e.preventDefault(); mandar(); } });
+  caja.addEventListener('input', () => { caja.style.height = 'auto'; caja.style.height = `${Math.min(caja.scrollHeight, 120)}px`; });
+  let cerrarVentana = () => {};
+  const { cerrar, caja: ventana } = modal([
+    el('div', { class: 'chat-cabecera' }, el('h2', {}, titulo),
+      el('button', { class: 'boton fantasma peque', 'aria-label': textoCerrar || 'Cerrar', title: textoCerrar || 'Cerrar', onclick: () => cerrarVentana() }, icono('LuX'))),
+    lista,
+    el('div', { class: 'chat-escribir' }, caja, boton),
+  ], { clase: 'chat', sinCerrar: true });
+  cerrarVentana = cerrar;
+  return { lista, caja, ventana, cerrar };
+}
+
+export function burbuja(texto, { mia = false, todos = false, quien = '', cuando = '' } = {}) {
+  return el('div', { class: `burbuja ${mia ? 'mia' : ''} ${todos ? 'todos' : ''}` }, el('small', {}, quien), el('p', {}, texto), cuando ? el('time', {}, cuando) : null);
+}
+
+// «14:05» si es de hoy; «28/10 14:05» si no.
+export function horaCorta(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? hora : `${d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} ${hora}`;
 }
 
 export async function copiar(texto, mensajes = {}) {

@@ -1,6 +1,6 @@
 import { get, post, setTaller, tallerActual, aplicarColorTaller } from './api.js';
 import { REFRESCO_VIVO_S } from './config.js';
-import { el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, descargarBlob, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, haceCuanto, fechaHora, NOMBRE_MODO } from './ui.js';
+import { el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, descargarBlob, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, haceCuanto, fechaHora, horaCorta, ventanaChat, burbuja, NOMBRE_MODO } from './ui.js';
 import { VERSION_APP } from './version.js';
 
 const app = document.getElementById('app');
@@ -318,14 +318,19 @@ function avisarMensaje(alumnos) {
 
 // Conversación con un alumno (a) o avisos a toda la sala (a = null). Abrirla la da por leída.
 async function abrirConversacion(a) {
-  const lista = el('div', { class: 'conversacion' });
+  const chat = ventanaChat({
+    titulo: a ? `N.º ${a.numero} · ${a.nombre}` : 'Aviso a todos',
+    placeholder: a ? `Contesta a ${a.nombre.split(' ')[0]}…` : 'Aviso para toda la sala…',
+    textoEnviar: a ? 'Enviar' : 'Enviar a todos',
+    enviar: async (texto) => { pintarLista(await post('p_mensaje', { k: clave, id: a ? a.id : '', texto })); toast(a ? 'Enviado' : 'Aviso enviado a todos'); },
+  });
   const pintarLista = (b) => {
     const ms = a ? ((b.conversaciones.find((c) => c.id === a.id) || {}).mensajes || []) : b.todos;
-    vaciar(lista);
-    if (!ms.length) lista.append(el('p', { class: 'apagado', style: 'margin:0' }, a ? 'Aún no hay mensajes con este alumno.' : 'Aún no has enviado ningún aviso a todos.'));
-    ms.forEach((m) => lista.append(el('div', { class: `burbuja ${m.de === 'profe' ? 'mia' : ''} ${m.todos ? 'todos' : ''}` },
-      el('small', {}, m.de === 'profe' ? `Tú${m.todos ? ' · a todos' : ''} · ${fechaHora(m.creado)}` : `${a.nombre} · ${fechaHora(m.creado)}`), el('p', {}, m.texto))));
-    lista.scrollTop = lista.scrollHeight;
+    vaciar(chat.lista);
+    if (!ms.length) chat.lista.append(el('p', { class: 'apagado' }, a ? 'Aún no hay mensajes con este alumno.' : 'Aún no has enviado ningún aviso a todos.'));
+    ms.forEach((m) => chat.lista.append(burbuja(m.texto, { mia: m.de === 'profe', todos: m.todos,
+      quien: m.de === 'profe' ? `Tú${m.todos ? ' · a todos' : ''}` : a.nombre, cuando: horaCorta(m.creado) })));
+    chat.lista.scrollTop = chat.lista.scrollHeight;
   };
   const recargar = async () => {
     try {
@@ -333,19 +338,9 @@ async function abrirConversacion(a) {
       if (a) { await post('p_mensajes_leidos', { k: clave, id: a.id }); mensajesVistos[a.id] = 0; }
     } catch (e) { toast(e.message, 'error'); }
   };
-  const caja = el('textarea', { rows: 3, maxlength: 500, placeholder: a ? `Contesta a ${a.nombre.split(' ')[0]}…` : 'Aviso para toda la sala…' });
-  const enviar = el('button', { class: 'boton bloque c-ye', onclick: async () => {
-    const texto = caja.value.trim();
-    if (!texto) return;
-    enviar.disabled = true;
-    try { pintarLista(await post('p_mensaje', { k: clave, id: a ? a.id : '', texto })); caja.value = ''; toast(a ? 'Enviado' : 'Aviso enviado a todos'); }
-    catch (e) { toast(e.message, 'error'); }
-    enviar.disabled = false;
-  } }, icono('LuSend'), a ? 'Enviar' : 'Enviar a todos');
-  const { caja: ventana } = modal([el('h2', {}, a ? `N.º ${a.numero} · ${a.nombre}` : 'Aviso a todos'), lista, caja, enviar]);
-  conversacionAbierta = { id: a ? a.id : '', ventana, recargar };
+  conversacionAbierta = { id: a ? a.id : '', ventana: chat.ventana, recargar };
   await recargar();
-  caja.focus();
+  chat.caja.focus();
 }
 
 function pintarTablaVivo(caja, v) {
@@ -373,10 +368,13 @@ function pintarTablaVivo(caja, v) {
       puedeFlotar() ? el('button', { class: `boton peque ${hayFlotante() ? 'secundario' : ''}`, dataset: { flotante: '1' }, onclick: () => { if (hayFlotante()) flotante.close(); else abrirFlotante(); } }, icono('LuPictureInPicture2'), hayFlotante() ? 'Cerrar ventana flotante' : 'Abrir ventana flotante') : null,
       avisosActivos() ? el('span', { class: 'chip c-gr', style: 'align-self:center' }, 'Notificaciones activadas') : el('button', { class: 'boton peque secundario', onclick: activarAvisos }, icono('LuBell'), 'Activar notificaciones'))));
   if (ayudas.length) caja.append(el('div', { class: 'aviso error' }, icono('LuHand'), ' ', el('strong', {}, `${ayudas.length} necesita${ayudas.length > 1 ? 'n' : ''} ayuda: `), ayudas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ')));
+  // Todas las conversaciones con mensajes, las que tienen algo sin leer primero: una ya leída no desaparece.
+  const conversan = todos.filter((a) => a.mensajes).sort((x, y) => (y.sin_leer ? 1 : 0) - (x.sin_leer ? 1 : 0) || x.numero.localeCompare(y.numero));
   caja.append(el('div', { class: `tarjeta ${escriben.length ? 'tinte c-ye' : ''}` }, el('h3', { style: 'margin:0 0 4px' }, 'Mensajes'),
-    el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Con el taller en curso, cada alumno puede escribirte desde el botón «Mensajes» de su app y le contestas aquí; le llega en unos segundos. Un aviso «a todos» le sale a toda la sala.'),
+    el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Con el taller en curso, cada alumno puede escribirte desde el botón «Mensajes» de su app y le contestas aquí; le llega en unos segundos. Un aviso «a todos» le sale a toda la sala. Abrir una conversación la da por leída, pero se queda aquí.'),
     el('div', { class: 'botones' }, el('button', { class: 'boton c-ye', onclick: () => abrirConversacion(null) }, icono('LuMegaphone'), 'Escribir a todos'),
-      ...escriben.map((a) => el('button', { class: 'boton secundario', onclick: () => abrirConversacion(a) }, icono('LuMessageCircle'), `n.º ${a.numero} ${a.nombre}`, el('span', { class: 'contador' }, String(a.sin_leer)))))));
+      ...conversan.map((a) => el('button', { class: `boton ${a.sin_leer ? 'c-ye' : 'secundario'}`, onclick: () => abrirConversacion(a) }, icono('LuMessageCircle'), `n.º ${a.numero} ${a.nombre}`,
+        a.sin_leer ? el('span', { class: 'contador' }, String(a.sin_leer)) : el('small', { style: 'margin-left:6px;opacity:.7' }, String(a.mensajes)))))));
   if (v.estado !== 'taller_en_curso') caja.append(el('div', { class: 'aviso atencion' }, 'El taller no está en curso: los alumnos aún no ven su caso.'));
   if (v.alumnos.length) caja.append(el('div', { class: 'tarjeta' }, el('h3', { style: 'margin:0 0 4px' }, 'Para todos'),
     el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Para cuando toda la sala se la ha ganado. A cada alumno le salta en su app, con confeti, en unos segundos. A uno solo se la das con «Acciones».'),

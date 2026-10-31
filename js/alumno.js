@@ -3,7 +3,7 @@ import { REFRESCO_ALUMNO_S } from './config.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import {
   el, vaciar, icono, pintarIconos, pildora, insignia, toast, modal, copiar, b64aBlob, descargarBlob, puedeCompartirArchivos,
-  cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
+  cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ventanaChat, burbuja, horaCorta, ICONO_MODO, ICONO_PREVIA, COLOR_PREVIA
 } from './ui.js';
 import { abrirTapar, celebrarMedalla, confeti } from './tapar.js';
 
@@ -475,25 +475,19 @@ function marcarVistos() {
 function pintarConversacion() {
   vaciar(conversacion);
   const ms = estado.mensajes || [];
-  if (!ms.length) conversacion.append(el('p', { class: 'apagado', style: 'margin:0' }, t('mensajes_vacio')));
-  ms.forEach((m) => conversacion.append(el('div', { class: `burbuja ${m.de === 'alumno' ? 'mia' : ''} ${m.todos ? 'todos' : ''}` },
-    el('small', {}, m.de === 'alumno' ? t('mensaje_tu') : t(m.todos ? 'mensaje_todos' : 'mensaje_de_profe')), el('p', {}, m.texto))));
+  if (!ms.length) conversacion.append(el('p', { class: 'apagado' }, t('mensajes_vacio')));
+  ms.forEach((m) => conversacion.append(burbuja(m.texto, { mia: m.de === 'alumno', todos: m.todos,
+    quien: m.de === 'alumno' ? t('mensaje_tu') : t(m.todos ? 'mensaje_todos' : 'mensaje_de_profe'), cuando: horaCorta(m.creado) })));
   conversacion.scrollTop = conversacion.scrollHeight;
   marcarVistos();
 }
 
 function abrirMensajes() {
-  conversacion = el('div', { class: 'conversacion' });
-  const caja = el('textarea', { rows: 3, maxlength: 500, placeholder: t('mensaje_ph') });
-  const enviar = el('button', { class: 'boton bloque', onclick: async () => {
-    const texto = caja.value.trim();
-    if (!texto) return;
-    enviar.disabled = true;
-    try { estado.mensajes = (await post('mensaje', { t: token, texto })).mensajes; caja.value = ''; pintarConversacion(); }
-    catch (e) { toast(e.message, 'error'); }
-    enviar.disabled = false;
-  } }, icono('LuSend'), t('enviar'));
-  modal([el('h2', {}, t('mensajes_titulo')), conversacion, caja, enviar], { textoCerrar: t('cerrar') });
+  const chat = ventanaChat({
+    titulo: t('mensajes_titulo'), placeholder: t('mensaje_ph'), textoEnviar: t('enviar'), textoCerrar: t('cerrar'),
+    enviar: async (texto) => { estado.mensajes = (await post('mensaje', { t: token, texto })).mensajes; pintarConversacion(); },
+  });
+  conversacion = chat.lista;
   pintarConversacion();
   actualizarBarra();
 }
