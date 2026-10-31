@@ -64,8 +64,10 @@ function programarRefresco() {
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
       const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha]);
       const cambio = huella(nuevo) !== huella(estado);
+      const mensajesAntes = estado.mensajes || [];
       estado = nuevo;
       setIdioma(estado.alumno.idioma);
+      if (!cambioFase) mensajesNuevos(mensajesAntes);
       if (cambioFase) { vista = { tipo: 'auto' }; pintar(); }
       else if (!cambio) return;                       // nada nuevo: no se toca lo que el alumno está leyendo
       else if (vista.tipo === 'mapa' || vista.tipo === 'auto') pintar(true);
@@ -455,9 +457,67 @@ function medallaGanada(medalla, progreso) {
   });
 }
 
+/* ───────────── Mensajes con el profesor (solo con el taller en curso) ───────────── */
+
+let conversacion = null;   // lista de la ventana de mensajes mientras está abierta
+const claveMensajes = () => `mensajes_vistos_${token}`;
+
+function sinLeerProfe() {
+  const visto = leerLocal(claveMensajes()) || '';
+  return (estado.mensajes || []).filter((m) => m.de === 'profe' && m.creado > visto).length;
+}
+
+function marcarVistos() {
+  const ultimo = (estado.mensajes || []).map((m) => m.creado).sort().pop();
+  if (ultimo) guardarLocal(claveMensajes(), ultimo);
+}
+
+function pintarConversacion() {
+  vaciar(conversacion);
+  const ms = estado.mensajes || [];
+  if (!ms.length) conversacion.append(el('p', { class: 'apagado', style: 'margin:0' }, t('mensajes_vacio')));
+  ms.forEach((m) => conversacion.append(el('div', { class: `burbuja ${m.de === 'alumno' ? 'mia' : ''} ${m.todos ? 'todos' : ''}` },
+    el('small', {}, m.de === 'alumno' ? t('mensaje_tu') : t(m.todos ? 'mensaje_todos' : 'mensaje_de_profe')), el('p', {}, m.texto))));
+  conversacion.scrollTop = conversacion.scrollHeight;
+  marcarVistos();
+}
+
+function abrirMensajes() {
+  conversacion = el('div', { class: 'conversacion' });
+  const caja = el('textarea', { rows: 3, maxlength: 500, placeholder: t('mensaje_ph') });
+  const enviar = el('button', { class: 'boton bloque', onclick: async () => {
+    const texto = caja.value.trim();
+    if (!texto) return;
+    enviar.disabled = true;
+    try { estado.mensajes = (await post('mensaje', { t: token, texto })).mensajes; caja.value = ''; pintarConversacion(); }
+    catch (e) { toast(e.message, 'error'); }
+    enviar.disabled = false;
+  } }, icono('LuSend'), t('enviar'));
+  modal([el('h2', {}, t('mensajes_titulo')), conversacion, caja, enviar], { textoCerrar: t('cerrar') });
+  pintarConversacion();
+  actualizarBarra();
+}
+
+// Tras cada refresco: lo nuevo del profesor se pinta en la ventana abierta o se avisa.
+function mensajesNuevos(antes) {
+  const nuevos = (estado.mensajes || []).filter((m) => m.de === 'profe' && !antes.some((a) => a.id === m.id));
+  if (conversacion && conversacion.isConnected) { if (nuevos.length) pintarConversacion(); return; }
+  if (!nuevos.length) return;
+  toast(`${t('mensaje_nuevo')}: ${nuevos[nuevos.length - 1].texto}`, 'ok', 8000);
+  if (navigator.vibrate) navigator.vibrate(200);
+  actualizarBarra();
+}
+
+function actualizarBarra() {
+  const barra = app.querySelector('.barra-inferior');
+  if (barra) { barra.replaceWith(barraAyuda()); pintarIconos(app); }
+}
+
 function barraAyuda() {
   const activa = estado.alumno.ayuda;
+  const sinLeer = sinLeerProfe();
   return el('div', { class: 'barra-inferior' },
+    estado.config.estado === 'taller_en_curso' ? el('button', { class: 'boton secundario', onclick: abrirMensajes }, icono('LuMessageCircle'), t('mensajes'), sinLeer ? el('span', { class: 'contador' }, String(sinLeer)) : null) : null,
     el('button', { class: `boton ${activa ? 'secundario' : ''} c-rd`, onclick: async () => {
       try {
         const r = await post('ayuda', { t: token, activa: !activa });

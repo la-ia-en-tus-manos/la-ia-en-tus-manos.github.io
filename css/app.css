@@ -429,6 +429,15 @@ select option { background: var(--bg1); }
 }
 .barra-inferior .boton { flex: 1; max-width: 360px; }
 
+/* Mensajes entre profesor y alumno */
+.conversacion { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; margin: 10px 0 12px; padding: 2px; }
+.burbuja { align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--borde); }
+.burbuja.mia { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: rgba(34, 230, 210, 0.16); border-color: rgba(34, 230, 210, 0.4); }
+.burbuja.todos { border-color: rgba(244, 194, 87, 0.5); }
+.burbuja small { display: block; font-size: 0.75rem; color: var(--txt3); margin-bottom: 2px; }
+.burbuja p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.contador { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 10px; background: var(--rd); color: #fff; font-size: 0.75rem; font-weight: 700; line-height: 20px; text-align: center; }
+
 /* Cabecera del alumno */
 .cabecera-alumno { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .numero-explorador { font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--txt3); }

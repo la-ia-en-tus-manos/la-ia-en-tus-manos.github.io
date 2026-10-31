@@ -6,7 +6,7 @@ export const IDIOMA_DEFECTO = 'es';
 
 const D = {
   es: {
-    cargando: 'Cargando…', reintentar: 'Volver a intentarlo', algo_mal: 'Algo no ha ido bien. ', cerrar: 'Cerrar', guardar: 'Guardar', cancelar: 'Cancelar',
+    cargando: 'Cargando…', reintentar: 'Volver a intentarlo', algo_mal: 'Algo no ha ido bien. ', cerrar: 'Cerrar', mensajes: 'Mensajes', mensajes_titulo: 'Mensajes con el profesor', mensajes_vacio: 'Si tienes una duda, escríbela aquí: el profesor la verá en su panel y te contestará aquí mismo.', mensaje_ph: 'Escribe tu mensaje…', mensaje_nuevo: 'Mensaje del profesor', mensaje_tu: 'Tú', mensaje_de_profe: 'Profesor', mensaje_todos: 'Profesor · para todos', guardar: 'Guardar', cancelar: 'Cancelar',
     copiado: 'Copiado. Ahora pégalo en Gemini', no_copiado: 'No se ha podido copiar. Selecciona el texto y cópialo', copiar: 'Copiar',
     sin_conexion: 'Sin conexión. Inténtalo de nuevo', sin_servidor: 'No se ha podido hablar con el servidor. Comprueba la conexión',
     modo_movil: 'Solo móvil', modo_portatil: 'Solo portátil', modo_ambos: 'Móvil y portátil',
@@ -97,7 +97,7 @@ const D = {
     dip_imprimir: 'Imprimir o guardar en PDF', dip_demo: 'Muestra con datos inventados', ver_diploma: 'Ver mi diploma'
   },
   'pt-BR': {
-    cargando: 'Carregando…', reintentar: 'Tentar de novo', algo_mal: 'Algo deu errado. ', cerrar: 'Fechar', guardar: 'Salvar', cancelar: 'Cancelar',
+    cargando: 'Carregando…', reintentar: 'Tentar de novo', algo_mal: 'Algo deu errado. ', cerrar: 'Fechar', mensajes: 'Mensagens', mensajes_titulo: 'Mensagens com o professor', mensajes_vacio: 'Se tiver uma dúvida, escreva aqui: o professor vai ver no painel dele e responder aqui mesmo.', mensaje_ph: 'Escreva sua mensagem…', mensaje_nuevo: 'Mensagem do professor', mensaje_tu: 'Você', mensaje_de_profe: 'Professor', mensaje_todos: 'Professor · para todos', guardar: 'Salvar', cancelar: 'Cancelar',
     copiado: 'Copiado. Agora cole no Gemini', no_copiado: 'Não foi possível copiar. Selecione o texto e copie', copiar: 'Copiar',
     sin_conexion: 'Sem conexão. Tente de novo', sin_servidor: 'Não foi possível falar com o servidor. Confira a conexão',
     modo_movil: 'Só celular', modo_portatil: 'Só notebook', modo_ambos: 'Celular e notebook',

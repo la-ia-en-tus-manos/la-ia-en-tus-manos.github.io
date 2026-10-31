@@ -10,6 +10,9 @@ let estado = null;
 let pestana = leerLocal('profe_pestana') || 'inicio';
 let vivoTimer = null;        // Worker que marca el ritmo del refresco (los temporizadores de un worker no se frenan en segundo plano)
 let ayudasVistas = new Set(); // ids de alumnos cuya petición de ayuda ya se avisó
+let mensajesVistos = {};       // id de alumno → mensajes sin leer ya avisados
+let conversacionAbierta = null; // { id, ventana, recargar } de la ventana de mensajes
+const conversacionCon = (id) => !!(conversacionAbierta && conversacionAbierta.ventana.isConnected && conversacionAbierta.id === id);
 let audio = null;             // AudioContext, solo tras un gesto del usuario
 const TITULO_BASE = document.title;
 
@@ -302,11 +305,61 @@ function avisarAyuda(nuevas, total) {
   } catch (e) { /* nada */ }
 }
 
+function avisarMensaje(alumnos) {
+  pitido();
+  const quien = alumnos.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ');
+  toast(`Mensaje nuevo de ${quien}`, 'ok', 6000);
+  if (!avisosActivos()) return;
+  try {
+    const n = new Notification(`Mensaje de ${quien}`, { body: 'Toca para contestar en el panel', tag: 'mensaje-' + Date.now(), icon: 'assets/ponente.png' });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) { /* nada */ }
+}
+
+// Conversación con un alumno (a) o avisos a toda la sala (a = null). Abrirla la da por leída.
+async function abrirConversacion(a) {
+  const lista = el('div', { class: 'conversacion' });
+  const pintarLista = (b) => {
+    const ms = a ? ((b.conversaciones.find((c) => c.id === a.id) || {}).mensajes || []) : b.todos;
+    vaciar(lista);
+    if (!ms.length) lista.append(el('p', { class: 'apagado', style: 'margin:0' }, a ? 'Aún no hay mensajes con este alumno.' : 'Aún no has enviado ningún aviso a todos.'));
+    ms.forEach((m) => lista.append(el('div', { class: `burbuja ${m.de === 'profe' ? 'mia' : ''} ${m.todos ? 'todos' : ''}` },
+      el('small', {}, m.de === 'profe' ? `Tú${m.todos ? ' · a todos' : ''} · ${fechaHora(m.creado)}` : `${a.nombre} · ${fechaHora(m.creado)}`), el('p', {}, m.texto))));
+    lista.scrollTop = lista.scrollHeight;
+  };
+  const recargar = async () => {
+    try {
+      pintarLista(await get('p_mensajes', { k: clave, id: a ? a.id : '' }));
+      if (a) { await post('p_mensajes_leidos', { k: clave, id: a.id }); mensajesVistos[a.id] = 0; }
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  const caja = el('textarea', { rows: 3, maxlength: 500, placeholder: a ? `Contesta a ${a.nombre.split(' ')[0]}…` : 'Aviso para toda la sala…' });
+  const enviar = el('button', { class: 'boton bloque c-ye', onclick: async () => {
+    const texto = caja.value.trim();
+    if (!texto) return;
+    enviar.disabled = true;
+    try { pintarLista(await post('p_mensaje', { k: clave, id: a ? a.id : '', texto })); caja.value = ''; toast(a ? 'Enviado' : 'Aviso enviado a todos'); }
+    catch (e) { toast(e.message, 'error'); }
+    enviar.disabled = false;
+  } }, icono('LuSend'), a ? 'Enviar' : 'Enviar a todos');
+  const { caja: ventana } = modal([el('h2', {}, a ? `N.º ${a.numero} · ${a.nombre}` : 'Aviso a todos'), lista, caja, enviar]);
+  conversacionAbierta = { id: a ? a.id : '', ventana, recargar };
+  await recargar();
+  caja.focus();
+}
+
 function pintarTablaVivo(caja, v) {
   vaciar(caja);
   const misiones = estado.contenido.misiones.filter((m) => m.id !== 'JEFE');
   const medallas = estado.contenido.medallas;
-  const ayudas = v.alumnos.filter((a) => a.ayuda);
+  // El demo se atiende como uno más (ayuda, mensajes, acciones), pero no cuenta en «para todos».
+  const todos = v.demo ? [...v.alumnos, v.demo] : v.alumnos;
+  const ayudas = todos.filter((a) => a.ayuda);
+  const escriben = todos.filter((a) => a.sin_leer);
+  const conNuevos = escriben.filter((a) => a.sin_leer > (mensajesVistos[a.id] || 0) && !conversacionCon(a.id));
+  mensajesVistos = Object.fromEntries(escriben.map((a) => [a.id, a.sin_leer]));
+  if (conNuevos.length) avisarMensaje(conNuevos);
+  escriben.filter((a) => conversacionCon(a.id)).forEach(() => conversacionAbierta.recargar());
   const nuevas = ayudas.filter((a) => !ayudasVistas.has(a.id));
   ayudasVistas = new Set(ayudas.map((a) => a.id));
   if (nuevas.length) avisarAyuda(nuevas, ayudas.length);
@@ -320,6 +373,10 @@ function pintarTablaVivo(caja, v) {
       puedeFlotar() ? el('button', { class: `boton peque ${hayFlotante() ? 'secundario' : ''}`, dataset: { flotante: '1' }, onclick: () => { if (hayFlotante()) flotante.close(); else abrirFlotante(); } }, icono('LuPictureInPicture2'), hayFlotante() ? 'Cerrar ventana flotante' : 'Abrir ventana flotante') : null,
       avisosActivos() ? el('span', { class: 'chip c-gr', style: 'align-self:center' }, 'Notificaciones activadas') : el('button', { class: 'boton peque secundario', onclick: activarAvisos }, icono('LuBell'), 'Activar notificaciones'))));
   if (ayudas.length) caja.append(el('div', { class: 'aviso error' }, icono('LuHand'), ' ', el('strong', {}, `${ayudas.length} necesita${ayudas.length > 1 ? 'n' : ''} ayuda: `), ayudas.map((a) => `n.º ${a.numero} ${a.nombre}`).join(' · ')));
+  caja.append(el('div', { class: `tarjeta ${escriben.length ? 'tinte c-ye' : ''}` }, el('h3', { style: 'margin:0 0 4px' }, 'Mensajes'),
+    el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Con el taller en curso, cada alumno puede escribirte desde el botón «Mensajes» de su app y le contestas aquí; le llega en unos segundos. Un aviso «a todos» le sale a toda la sala.'),
+    el('div', { class: 'botones' }, el('button', { class: 'boton c-ye', onclick: () => abrirConversacion(null) }, icono('LuMegaphone'), 'Escribir a todos'),
+      ...escriben.map((a) => el('button', { class: 'boton secundario', onclick: () => abrirConversacion(a) }, icono('LuMessageCircle'), `n.º ${a.numero} ${a.nombre}`, el('span', { class: 'contador' }, String(a.sin_leer)))))));
   if (v.estado !== 'taller_en_curso') caja.append(el('div', { class: 'aviso atencion' }, 'El taller no está en curso: los alumnos aún no ven su caso.'));
   if (v.alumnos.length) caja.append(el('div', { class: 'tarjeta' }, el('h3', { style: 'margin:0 0 4px' }, 'Para todos'),
     el('p', { class: 'apagado', style: 'margin:0 0 10px' }, 'Para cuando toda la sala se la ha ganado. A cada alumno le salta en su app, con confeti, en unos segundos. A uno solo se la das con «Acciones».'),
@@ -337,7 +394,7 @@ function pintarTablaVivo(caja, v) {
 
   const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'N.º'), el('th', {}, 'Alumno'), el('th', {}, 'Misiones'), el('th', {}, 'Medallas'), el('th', {}, 'Jefe'), el('th', {}, 'Visto'), el('th', {}, ''))));
   const cuerpo = el('tbody');
-  v.alumnos.forEach((a) => {
+  todos.forEach((a) => {
     const fila = el('tr', { class: a.ayuda ? 'ayuda' : '' },
       el('td', {}, el('strong', {}, a.numero)),
       el('td', {}, el('strong', {}, a.nombre), el('br'), el('small', { class: 'apagado' }, NOMBRE_MODO[a.modo], a.idioma && a.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[a.idioma] || a.idioma}` : '', a.ayuda ? ' · ¡AYUDA!' : '')),
@@ -345,7 +402,9 @@ function pintarTablaVivo(caja, v) {
       el('td', {}, el('div', { class: 'sellos' }, ...medallas.map((m) => el('span', { class: `c-${m.color} ${a.medallas.includes(m.id) ? 'si' : ''}`, title: m.nombre }, m.nombre[0])))),
       el('td', {}, a.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, el('small', {}, haceCuanto(a.ultimo_acceso))),
-      el('td', {}, el('button', { class: 'boton peque secundario', onclick: () => accionesAlumno(a) }, 'Acciones')));
+      el('td', {}, el('div', { class: 'botones', style: 'margin:0;flex-wrap:nowrap' },
+        el('button', { class: 'boton peque secundario', onclick: () => abrirConversacion(a) }, icono('LuMessageCircle'), a.sin_leer ? el('span', { class: 'contador' }, String(a.sin_leer)) : null),
+        el('button', { class: 'boton peque secundario', onclick: () => accionesAlumno(a) }, 'Acciones'))));
     cuerpo.append(fila);
   });
   tabla.append(cuerpo);
