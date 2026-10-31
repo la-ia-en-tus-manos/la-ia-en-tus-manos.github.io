@@ -137,13 +137,16 @@ function fichaDemo() {
   const kits = Array.from({ length: +estado.config.kits_activos || 20 }, (_, i) => i + 1);
   const kit = el('select', { style: 'width:auto;min-width:90px' }, ...kits.map((n) => el('option', { value: n, selected: n === (d.kit || 1) }, `Kit ${String(n).padStart(2, '0')}`)));
   const idioma = el('select', { style: 'width:auto' }, ...(estado.contenido.idiomas || ['es']).map((i) => el('option', { value: i, selected: i === (d.idioma || 'es') }, NOMBRE_IDIOMA[i] || i)));
+  const genero = el('select', { style: 'width:auto' }, el('option', { value: '' }, 'Personaje original del kit'),
+    ...['f', 'm'].map((g) => el('option', { value: g, selected: g === d.genero_kit }, g === 'f' ? 'Mujer' : 'Hombre')));
   const actual = estado.config.estado;
   const verComo = el('select', { style: 'width:auto' }, el('option', { value: '' }, `Estado actual (${NOMBRE_ESTADO[actual] || actual})`),
     ...['inscripcion_abierta', 'inscripcion_cerrada', 'taller_en_curso', 'terminado'].filter((e) => e !== actual).map((e) => el('option', { value: e }, `Como si estuviera: ${NOMBRE_ESTADO[e] || e}`)));
   const abrir = el('button', { class: 'boton peque c-vi', onclick: async () => {
     try {
-      const r = await post('p_demo', { k: clave, kit: kit.value, idioma: idioma.value });
+      const r = await post('p_demo', { k: clave, kit: kit.value, idioma: idioma.value, genero: genero.value });
       estado.demo = r;
+      if (genero.value && r.genero_kit !== genero.value) toast(`El kit ${String(r.kit).padStart(2, '0')} solo existe con personaje ${NOMBRE_GENERO[r.genero_kit]}`, 'aviso', 4000);
       // Con la inscripción abierta, el alumno empieza por el formulario: el demo también (en modo prueba, no inscribe).
       const url = new URL(r.enlace);
       if ((verComo.value || actual) === 'inscripcion_abierta') {
@@ -157,8 +160,8 @@ function fichaDemo() {
       window.open(url.href, '_blank', 'noopener');
     } catch (e) { toast(e.message, 'error'); }
   } }, icono('LuExternalLink'), 'Abrir en pestaña nueva');
-  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, idioma, verComo, abrir),
-    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más. Con la inscripción abierta empieza por el formulario, que al enviarlo no inscribe a nadie.'));
+  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, genero, idioma, verComo, abrir),
+    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Elige kit y personaje (mujer u hombre) para abrir el mismo laboratorio que un alumno. No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más. Con la inscripción abierta empieza por el formulario, que al enviarlo no inscribe a nadie.'));
 }
 
 // Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.
