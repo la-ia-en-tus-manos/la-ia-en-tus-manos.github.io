@@ -160,8 +160,7 @@ function fichaDemo() {
       window.open(url.href, '_blank', 'noopener');
     } catch (e) { toast(e.message, 'error'); }
   } }, icono('LuExternalLink'), 'Abrir en pestaña nueva');
-  return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, genero, idioma, verComo, abrir),
-    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'Elige kit y personaje (mujer u hombre) para abrir el mismo laboratorio que un alumno. No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más. Con la inscripción abierta empieza por el formulario, que al enviarlo no inscribe a nadie.'));
+  return el('div', { class: 'botones', style: 'margin:0' }, kit, genero, idioma, verComo, abrir);
 }
 
 // Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.
