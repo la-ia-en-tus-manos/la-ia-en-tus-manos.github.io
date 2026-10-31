@@ -31,7 +31,7 @@ async function cargar(silencioso = false) {
   try {
     estado = await get('alumno', { t: token });
     if (!estado.alumno.demo) guardarLocal('taller_token', { token, taller: estado.config.taller_id });
-    if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}`);
+    if (params.has('t') && params.has('nuevo')) history.replaceState(null, '', `alumno.html?t=${encodeURIComponent(token)}${verEstado ? `&ver_estado=${verEstado}` : ''}`);
   } catch (e) {
     if (e.codigo === 404) borrarLocal('taller_token');
     if (e.codigo === 410) {

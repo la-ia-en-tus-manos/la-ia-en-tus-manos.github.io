@@ -1,15 +1,19 @@
-import { get, post, setTaller, tallerDeUrl, tallerActual, aplicarColorTaller } from './api.js';
+import { get, post, setTaller, tallerDeUrl, tallerActual, aplicarColorTaller, verEstado } from './api.js';
 import { t, setIdioma, idiomaActual, IDIOMAS } from './i18n.js';
 import { el, vaciar, icono, pintarIconos, pildora, toast, cargarInicio, errorPantalla, guardarLocal, leerLocal, borrarLocal, ICONO_MODO } from './ui.js';
 
 const app = document.getElementById('app');
 const cargadoEn = Date.now();
 let pub = null;
+// Vista de prueba del usuario demo (?demo=<su token>, desde el panel): el formulario se ve como lo verá un
+// alumno, pero enviarlo no inscribe a nadie y lleva a la app del demo. Con su token el servidor acepta ver_estado.
+const demo = new URLSearchParams(location.search).get('demo') || '';
+const publico = () => get('publico', demo ? { t: demo } : {});
 
 async function iniciar() {
   cargarInicio(app, t('cargando'));
   setTaller(tallerDeUrl());
-  try { pub = await get('publico'); } catch (e) { return errorPantalla(app, e.message, iniciar); }
+  try { pub = await publico(); } catch (e) { return errorPantalla(app, e.message, iniciar); }
   if (window.TALLER_FIJO && pub.taller_id !== window.TALLER_FIJO) {
     // Dirección de una edición que no existe: el servidor ha contestado con la de defecto.
     vaciar(app).append(el('div', { class: 'tarjeta tinte' }, el('h1', {}, t('taller_no_existe')), el('p', { class: 'sub' }, t('taller_no_existe_txt')), el('a', { class: 'boton', href: '/' }, t('ver_talleres'))));
@@ -24,7 +28,7 @@ function selectorIdioma() {
   const disponibles = (pub.idiomas && pub.idiomas.length ? pub.idiomas : ['es']);
   if (disponibles.length < 2) return null;
   return el('div', { class: 'botones', style: 'margin:0 0 14px' }, ...disponibles.map((id) =>
-    el('button', { class: `boton peque ${id === idiomaActual() ? '' : 'fantasma'}`, type: 'button', onclick: async () => { setIdioma(id); try { pub = await get('publico'); } catch (e) { /* se queda la anterior */ } pintar(); } }, icono('LuGlobe'), IDIOMAS[id])));
+    el('button', { class: `boton peque ${id === idiomaActual() ? '' : 'fantasma'}`, type: 'button', onclick: async () => { setIdioma(id); try { pub = await publico(); } catch (e) { /* se queda la anterior */ } pintar(); } }, icono('LuGlobe'), IDIOMAS[id])));
 }
 
 // «La IA en tus manos» → «La IA en » + «tus manos» en color: las dos últimas palabras llevan el acento.
@@ -71,8 +75,9 @@ function pintar() {
   app.append(...cabecera().filter(Boolean));
   if (pub.abiertos && pub.abiertos.length) app.append(el('p', { class: 'apagado' }, t('otros_abiertos'), ' ', ...pub.abiertos.map((tl, i) => [i ? ' · ' : '', el('a', { href: `${window.TALLER_FIJO ? '../' : ''}${tl.taller_id}/` }, tl.nombre_taller)])));
 
+  if (demo) app.append(el('div', { class: 'aviso atencion' }, el('strong', {}, t('demo_inscripcion_t')), t('demo_inscripcion')));
   const guardado = leerLocal('taller_token');
-  if (guardado && guardado.token && (guardado.taller || 'taller1') === pub.taller_id) {
+  if (!demo && guardado && guardado.token && (guardado.taller || 'taller1') === pub.taller_id) {
     app.append(el('div', { class: 'aviso' },
       el('p', { style: 'margin:0 0 10px' }, t('ya_inscrito_aqui')),
       el('a', { class: 'boton bloque', href: `alumno.html?t=${encodeURIComponent(guardado.token)}` }, t('abrir_enlace'))
@@ -144,6 +149,7 @@ function formulario(esEspera) {
     if (nombre.split(/\s+/).length < 2) return mostrarError(aviso, t('err_nombre'));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((d.correo || '').trim())) return mostrarError(aviso, t('err_correo'));
     if (!d.consentimiento) return mostrarError(aviso, t('err_consentimiento'));
+    if (demo) { location.href = `alumno.html?t=${encodeURIComponent(demo)}&nuevo=1${verEstado ? `&ver_estado=${verEstado}` : ''}`; return; }
     boton.disabled = true;
     boton.textContent = t('enviando');
     try {

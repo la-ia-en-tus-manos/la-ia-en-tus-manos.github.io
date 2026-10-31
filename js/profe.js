@@ -144,11 +144,21 @@ function fichaDemo() {
     try {
       const r = await post('p_demo', { k: clave, kit: kit.value, idioma: idioma.value });
       estado.demo = r;
-      window.open(verComo.value ? `${r.enlace}${r.enlace.includes('?') ? '&' : '?'}ver_estado=${verComo.value}` : r.enlace, '_blank', 'noopener');
+      // Con la inscripción abierta, el alumno empieza por el formulario: el demo también (en modo prueba, no inscribe).
+      const url = new URL(r.enlace);
+      if ((verComo.value || actual) === 'inscripcion_abierta') {
+        const token = url.searchParams.get('t');
+        url.pathname = url.pathname.replace(/alumno\.html$/, 'index.html');
+        url.search = '';
+        url.searchParams.set('taller', estado.config.taller_id);
+        url.searchParams.set('demo', token);
+      }
+      if (verComo.value) url.searchParams.set('ver_estado', verComo.value);
+      window.open(url.href, '_blank', 'noopener');
     } catch (e) { toast(e.message, 'error'); }
   } }, icono('LuExternalLink'), 'Abrir en pestaña nueva');
   return el('div', {}, el('div', { class: 'botones', style: 'margin:0' }, kit, idioma, verComo, abrir),
-    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más.'));
+    el('span', { class: 'apagado', style: 'font-size:0.85rem' }, 'No ocupa plaza ni kit, no recibe correos y no cuenta en listas, encuestas ni diplomas. Ve lo mismo que un alumno en el estado elegido; el estado del taller no cambia para nadie más. Con la inscripción abierta empieza por el formulario, que al enviarlo no inscribe a nadie.'));
 }
 
 // Talleres agrupados por nivel (Taller 1, 2, 3); dentro, sus ediciones. Uno por línea, sin desplegables.
