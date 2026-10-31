@@ -723,6 +723,12 @@ async function pintarEncuestas() {
         el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, reco.media === null ? '—' : reco.media), el('small', {}, 'media sobre 5')),
         el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, reco.recomiendan), el('small', {}, 'lo recomendarían (4–5)')),
         el('div', { class: 'tarjeta kpi c-rd' }, el('b', {}, reco.no_recomiendan), el('small', {}, 'no lo recomendarían (1–2)')))));
+    if (r.siguiente) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, `¿Harían el ${r.siguiente.taller}?`),
+      el('p', { class: 'sub' }, `«${r.siguiente.nombre}». Se pregunta en el cierre, con sí o no.`),
+      el('div', { class: 'rejilla' },
+        el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, r.siguiente.si), el('small', {}, 'sí')),
+        el('div', { class: 'tarjeta kpi c-rd' }, el('b', {}, r.siguiente.no), el('small', {}, 'no')),
+        el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, r.total - r.siguiente.si - r.siguiente.no), el('small', {}, 'sin responder')))));
     if (r.misiones.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Misión más útil'), el('ul', { style: 'padding-left:20px' }, ...r.misiones.map((m) => el('li', {}, el('b', {}, `${m.id} · ${m.titulo}`), ` · ${m.votos} ${m.votos === 1 ? 'voto' : 'votos'}`)))));
     if (r.comentarios.length) caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Comentarios'), ...r.comentarios.map((c) => el('div', { style: 'border-top:1px solid var(--borde);padding:10px 0' },
       el('small', { class: 'apagado' }, `Explorador n.º ${c.numero}`),

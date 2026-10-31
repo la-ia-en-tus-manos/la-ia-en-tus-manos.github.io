@@ -743,6 +743,7 @@ function pintarCierre() {
 function formularioCierre() {
   const a = estado.alumno;
   const c = estado.contenido;
+  const sig = estado.siguiente_taller;
   const f = el('form', { class: 'tarjeta', novalidate: true });
   const escala = (nombre, desde, hasta, etiquetas) => el('div', { class: 'opciones escala', style: `grid-template-columns:repeat(${Math.min(5, hasta - desde + 1)},1fr)` }, ...Array.from({ length: hasta - desde + 1 }, (_, i) => desde + i).map((n) =>
     el('label', { class: 'opcion', style: 'justify-content:center;padding:10px 4px', title: etiquetas ? etiquetas[n] || '' : '' }, el('input', { type: 'radio', name: nombre, value: n }), el('strong', { style: 'font-size:1.3rem' }, n))));
@@ -760,6 +761,10 @@ function formularioCierre() {
     el('label', { class: 'campo' }, el('span', {}, t('mision_util')), utiles),
     el('label', { class: 'campo' }, el('span', {}, t('lo_mejor')), el('textarea', { name: 'lo_mejor', placeholder: t('lo_mejor_ph') })),
     el('label', { class: 'campo' }, el('span', {}, t('mejorarias')), el('textarea', { name: 'mejorar', placeholder: t('mejorar_ph') })),
+    // Si hay un nivel siguiente, ¿le gustaría hacerlo? Sí o no, justo encima del aviso de próximos talleres.
+    ...(sig ? [el('div', { class: 'campo' }, el('span', { style: 'display:block;font-weight:600;margin-bottom:6px' }, t('quiere_siguiente', { taller: t('etiqueta_taller', { n: sig.numero, nivel: sig.nivel }) })),
+      el('div', { class: 'opciones', style: 'grid-template-columns:1fr 1fr' }, ...[['si', t('si_quiero')], ['no', t('no_quiero')]].map(([v, txt]) =>
+        el('label', { class: 'opcion', style: 'justify-content:center;padding:10px 4px' }, el('input', { type: 'radio', name: 'quiere_siguiente', value: v }), el('strong', { style: 'font-size:1.1rem' }, txt)))))] : []),
     el('label', { class: 'casilla' }, el('input', { type: 'checkbox', name: 'aviso_t2', checked: a.avisos }), el('span', {}, t('aviso_t2'))),
     el('button', { class: 'boton grande bloque c-gr', type: 'submit' }, icono('LuCheck'), t('enviar')));
   f.addEventListener('submit', async (e) => {
@@ -769,8 +774,9 @@ function formularioCierre() {
     if (falta) { toast(t('err_valoracion', { que: t(`val_${falta}`) }), 'error'); f.querySelector(`input[name="${falta}"]`).closest('.campo').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
     if (!d.recomendaria) return toast(t('err_recomendaria'), 'error');
     if (!d.seguridad) return toast(t('err_seguridad'), 'error');
+    if (sig && !d.quiere_siguiente) return toast(t('err_quiere_siguiente'), 'error');
     try {
-      await post('cierre', { t: token, nombre_certificado: d.nombre_certificado, seguridad: d.seguridad, mision_util: d.mision_util, mejorar: d.mejorar, aviso_t2: !!d.aviso_t2,
+      await post('cierre', { t: token, nombre_certificado: d.nombre_certificado, seguridad: d.seguridad, mision_util: d.mision_util, mejorar: d.mejorar, aviso_t2: !!d.aviso_t2, quiere_siguiente: d.quiere_siguiente || '',
         general: d.general, profesor: d.profesor, contenido: d.contenido, ritmo: d.ritmo, app: d.app, recomendaria: d.recomendaria, lo_mejor: d.lo_mejor });
       estado = await get('alumno', { t: token });
       pintar();
