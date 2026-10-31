@@ -650,6 +650,7 @@ function accionesInscrito(i) {
       i.estado === 'espera' ? el('button', { class: 'boton c-gr', onclick: () => accion({ accion: 'subir' }, 'Ya tiene plaza') }, icono('LuArrowUp'), 'Darle plaza') : null,
       i.estado !== 'cancelado' ? el('button', { class: 'boton secundario peligro', onclick: () => accion({ accion: 'cancelar' }, 'Plaza cancelada', `¿Cancelar la inscripción de ${i.nombre}?`) }, 'Cancelar inscripción') : null,
       el('button', { class: 'boton peligro', onclick: () => accion({ accion: 'borrar' }, 'Datos borrados y aviso enviado', `¿Borrar todos los datos de ${i.nombre}? No se puede deshacer. Le llegará un último correo confirmándolo, con un resumen de lo que hizo y su diploma en PDF si lo tiene.`) }, icono('LuTrash2'), 'Borrar sus datos')),
+    respuestasMedallas(i),
     el('h3', { style: 'margin-top:14px' }, 'Modo'),
     el('div', { class: 'botones' }, ...['ambos', 'portatil', 'movil'].map((m) => el('button', { class: `boton peque ${i.modo === m ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'modo', modo: m }, 'Modo cambiado') }, NOMBRE_MODO[m]))),
     i.estado === 'plaza' ? el('h3', { style: 'margin-top:14px' }, `Personaje (prefiere ${NOMBRE_GENERO[i.personaje]})`) : null,
@@ -657,6 +658,19 @@ function accionesInscrito(i) {
     el('h3', { style: 'margin-top:14px' }, 'Idioma'),
     el('div', { class: 'botones' }, ...(estado.contenido.idiomas || ['es']).map((id) => el('button', { class: `boton peque ${i.idioma === id ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'idioma', idioma: id }, 'Idioma cambiado') }, NOMBRE_IDIOMA[id] || id)))
   ]);
+}
+
+// Lo que contestó el alumno a las preguntas de medalla (al cumplir misiones): en verde, la respuesta que la gana.
+function respuestasMedallas(i) {
+  if (!i.respuestas || !i.respuestas.length) return null;
+  const medallas = estado.contenido.medallas || [];
+  return el('div', {}, el('h3', { style: 'margin-top:14px' }, 'Preguntas de medalla'),
+    ...i.respuestas.slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts))).map((r) => {
+      const m = medallas.find((x) => x.id === r.medalla);
+      const o = m && m.pregunta ? m.pregunta.opciones.find((x) => x.id === r.opcion) : null;
+      return el('p', { style: 'margin:4px 0' }, el('span', { class: `chip ${o && o.gana ? 'c-gr' : ''}` }, `${m ? m.nombre : r.medalla} · ${r.mision}`), ' ',
+        o ? o.texto : r.opcion, r.texto ? el('em', {}, ` «${r.texto}»`) : null);
+    }));
 }
 
 function avisarTodos() {

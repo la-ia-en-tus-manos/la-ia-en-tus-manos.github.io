@@ -445,16 +445,60 @@ function celebrarPendientes() {
   if (medalla) medallaGanada(medalla, estado.progreso);
 }
 
-function medallaGanada(medalla, progreso) {
+function medallaGanada(medalla, progreso, despues) {
   const vistas = leerLocal(claveVistas());
   guardarLocal(claveVistas(), [...new Set([...(Array.isArray(vistas) ? vistas : []), medalla.id])]);
   estado.progreso = progreso;
   estado.contenido.medallas = estado.contenido.medallas.map((m) => (m.id === medalla.id ? medalla : m));
   celebrarMedalla(medalla, () => {
     pintar(true);
+    if (despues) return despues();
     const nodo = app.querySelector(`[data-medalla="${medalla.id}"]`);
     if (nodo) nodo.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+}
+
+// Al marcar cumplida una misión: las preguntas de medalla que tocan en ella, una detrás de otra. No dicen que
+// haya premio; si la respuesta es la buena, salta la medalla con su confeti. Si no, se vuelve a preguntar en la
+// siguiente misión de su lista. «Ahora no» no guarda nada.
+function preguntarMedallas(mision) {
+  if (!estado.contenido || estado.config.estado !== 'taller_en_curso') return;
+  const cola = (estado.contenido.preguntas || []).filter((q) => q.misiones.includes(mision));
+  const siguiente = () => {
+    const q = cola.shift();
+    if (!q) return;
+    if (!(estado.contenido.preguntas || []).some((x) => x.medalla === q.medalla)) return siguiente();
+    const nombre = `medalla_${q.medalla}`;
+    const detalle = el('textarea', { rows: 2, maxlength: 300, style: 'display:none;margin-top:10px' });
+    const opciones = el('div', { class: 'opciones', style: 'grid-template-columns:1fr' }, ...q.opciones.map((o) =>
+      el('label', { class: 'opcion', style: 'padding:10px 12px' }, el('input', { type: 'radio', name: nombre, value: o.id }), el('span', {}, o.texto))));
+    opciones.addEventListener('change', () => {
+      const o = q.opciones.find((x) => x.id === opciones.querySelector('input:checked')?.value);
+      detalle.style.display = o && o.detalle ? '' : 'none';
+      detalle.placeholder = (o && o.detalle) || '';
+    });
+    const enviar = el('button', { class: 'boton grande bloque c-gr', type: 'submit' }, icono('LuSend'), t('enviar'));
+    const f = el('form', {}, el('p', { class: 'pildora' }, t('pregunta_rapida')), el('h2', {}, q.texto), opciones, detalle,
+      el('div', { class: 'botones', style: 'margin-top:14px' }, enviar,
+        el('button', { class: 'boton fantasma bloque', type: 'button', onclick: () => { cerrar(); siguiente(); } }, t('ahora_no'))));
+    const { cerrar } = modal(f, { sinCerrar: true, fijo: true });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const o = q.opciones.find((x) => x.id === opciones.querySelector('input:checked')?.value);
+      if (!o) return toast(t('err_elige_respuesta'), 'error');
+      const texto = detalle.value.trim();
+      if (o.detalle && texto.length < 3) { detalle.focus(); return toast(t('err_detalle'), 'error'); }
+      enviar.disabled = true;
+      try {
+        const r = await post('responder', { t: token, medalla: q.medalla, mision, opcion: o.id, texto: o.detalle ? texto : '' });
+        estado.contenido.preguntas = r.preguntas;
+        cerrar();
+        if (r.ganada && r.medalla) medallaGanada(r.medalla, r.progreso, siguiente);
+        else { estado.progreso.medallas = r.progreso.medallas; toast(t('gracias_respuesta')); siguiente(); }
+      } catch (err) { enviar.disabled = false; toast(err.message, 'error'); }
+    });
+  };
+  siguiente();
 }
 
 /* ───────────── Mensajes con el profesor (solo con el taller en curso) ───────────── */
@@ -611,6 +655,7 @@ function pintarMision(id, repaso = false) {
       try {
         const prog = await post('mision', { t: token, id: m.id, cumplida: !cumplida });
         estado.progreso.medallas = prog.medallas;
+        if (!cumplida) preguntarMedallas(m.id);
       } catch (e) {
         estado.progreso.misiones = antes;
         pintar();
