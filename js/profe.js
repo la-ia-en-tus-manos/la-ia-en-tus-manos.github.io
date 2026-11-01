@@ -543,31 +543,65 @@ async function pintarCorreos() {
       : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Reloj de envíos sin activar. '),
         'Para que el envío programado y los recordatorios salgan aunque no abras el panel, actívalo una vez en Apps Script: Activadores (el reloj de la izquierda) → Añadir activador → función «revisarEnviosProgramados» → «Según el tiempo» → «Temporizador por horas» → cada 12 horas → Guardar. Mientras tanto, salen la primera vez que abras el panel después de la hora.')));
 
-  // Podcast del taller: resumen en audio en Drive; prueba, envío a todos y, desde entonces, en cada confirmación.
+  // Podcast del taller: resumen en audio en Drive. Prueba, envío a los elegidos y, tras el primero, en cada confirmación.
+  // La tabla dice a quién se le envió, quién lo abrió y hasta dónde lo escuchó (lo anota podcast.html).
   const pods = (d.podcast || {})[cfg.contenido] || {};
   const pod = pods.es || pods['pt-BR'];
-  const apuntados = (d.apuntados || {})[cfg.taller_id] || 0;
+  const escuchas = (d.escuchas || {})[cfg.taller_id] || [];
+  const conVersion = (x) => !!pods[x.idioma === 'pt-BR' ? 'pt-BR' : 'es'];
   const pruebaPod = el('input', { type: 'email', value: estado.config.responsable_correo || '', placeholder: 'tu correo' });
+  const marcas = new Map();
+  const botonEnviar = el('button', { class: 'boton c-gr' });
+  const contar = () => {
+    const n = [...marcas.values()].filter((c) => c.checked).length;
+    botonEnviar.disabled = !n;
+    vaciar(botonEnviar).append(icono('LuHeadphones'), `Enviar a ${n} seleccionado${n === 1 ? '' : 's'}`);
+    pintarIconos(botonEnviar);
+  };
+  botonEnviar.onclick = async () => {
+    const ids = escuchas.filter((x) => marcas.get(x.id)?.checked).map((x) => x.id);
+    const repetidos = escuchas.filter((x) => ids.includes(x.id) && x.enviado).length;
+    if (!window.confirm(`¿Enviar el podcast a ${ids.length} inscrito${ids.length === 1 ? '' : 's'}${repetidos ? ` (${repetidos} ya lo recibieron)` : ''}?`)) return;
+    try { const r = await post('p_podcast', { k: clave, taller: cfg.taller_id, ids }); toast(`Podcast enviado a ${r.enviados} de ${r.total}`); pintar(); } catch (e) { toast(e.message, 'error'); }
+  };
+  const escuchado = (x) => x.avance >= 100 ? el('span', { class: 'chip c-gr' }, 'entero')
+    : x.avance > 0 ? [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${x.avance}%` })), el('small', {}, `${x.avance} %`)]
+      : el('small', { class: 'apagado' }, x.abierto ? 'sin darle a ▶' : '—');
+  const tablaPod = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, ''), el('th', {}, 'N.º'), el('th', {}, 'Alumno'), el('th', {}, 'Enviado'), el('th', {}, 'Abierto'), el('th', {}, 'Escuchado'))),
+    el('tbody', {}, ...escuchas.map((x) => {
+      const casilla = el('input', { type: 'checkbox', disabled: !conVersion(x), title: conVersion(x) ? '' : 'No hay podcast en su idioma', onchange: contar });
+      casilla.checked = conVersion(x) && !x.enviado;
+      marcas.set(x.id, casilla);
+      return el('tr', {},
+        el('td', {}, casilla), el('td', {}, el('strong', {}, x.numero || '')),
+        el('td', {}, x.nombre, x.estado === 'espera' ? el('small', { class: 'apagado' }, ' · en espera') : null, x.idioma === 'pt-BR' ? el('small', { class: 'apagado' }, ' · Brasil') : null),
+        el('td', {}, x.enviado ? el('small', {}, fechaHora(x.enviado)) : el('small', { class: 'apagado' }, 'no')),
+        el('td', {}, x.abierto ? el('small', {}, `${fechaHora(x.abierto)}${x.veces > 1 ? ` · ${x.veces} veces` : ''}`) : el('small', { class: 'apagado' }, 'no')),
+        el('td', {}, escuchado(x)));
+    })));
+  const resumenPod = `${escuchas.filter((x) => x.enviado).length} lo han recibido · ${escuchas.filter((x) => x.abierto).length} lo han abierto · ${escuchas.filter((x) => x.avance > 0).length} lo han empezado · ${escuchas.filter((x) => x.avance >= 100).length} lo han escuchado entero`;
   caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Podcast del taller'),
     !pod
       ? el('p', { class: 'apagado' }, 'Este taller no tiene podcast. Se sube con: node scripts/subir_podcast.mjs <audio> --taller ', cfg.contenido || 'taller1')
       : [
         el('p', { class: 'sub' }, el('strong', {}, `«${pod.titulo}»`), ` · ${pod.minutos} min · `, el('a', { href: pod.url, target: '_blank' }, 'Escucharlo en Drive'),
           pods.es && pods['pt-BR'] ? ' · en español y portugués' : pods['pt-BR'] ? ' · solo en portugués' : ' · solo en español: a los alumnos de Brasil no les llega'),
-        el('p', {}, 'Un correo tipo newsletter con la imagen del podcast, lo que se va a escuchar y el botón para oírlo en Drive. Llega a los inscritos con plaza y en lista de espera.'),
+        el('p', {}, 'Un correo tipo newsletter con la imagen del podcast, lo que se va a escuchar y el botón para oírlo en una página del taller, que anota quién lo abre y hasta dónde lo escucha. Llega a los inscritos con plaza y en lista de espera.'),
         el('div', { class: 'botones', style: 'align-items:center' }, pruebaPod,
           el('button', { class: 'boton secundario', onclick: async () => {
             try { await post('p_podcast', { k: clave, taller: cfg.taller_id, prueba: pruebaPod.value.trim() }); toast('Prueba enviada'); } catch (e) { toast(e.message, 'error'); }
           } }, icono('LuSend'), 'Enviarme una prueba')),
         cfg.podcast_enviado
-          ? el('div', { class: 'aviso ok' }, `Enviado a todos el ${fechaHora(cfg.podcast_enviado)}. Desde entonces, cada nuevo inscrito lo recibe en su correo de confirmación.`)
-          : el('p', { class: 'apagado' }, 'Cuando lo envíes a todos, también irá en el correo de confirmación de cada nuevo inscrito.'),
-        el('div', { class: 'botones' },
-          el('button', { class: 'boton c-gr', disabled: !apuntados, onclick: async () => {
-            if (!window.confirm(`¿Enviar el podcast a los ${apuntados} inscritos de ${cfg.taller_id}${cfg.podcast_enviado ? ' otra vez' : ''}?`)) return;
-            try { const r = await post('p_podcast', { k: clave, taller: cfg.taller_id }); toast(`Podcast enviado a ${r.enviados} de ${r.total}`); pintar(); } catch (e) { toast(e.message, 'error'); }
-          } }, icono('LuHeadphones'), `Enviar a ${apuntados} inscrito${apuntados === 1 ? '' : 's'}`))
+          ? el('div', { class: 'aviso ok' }, `Primer envío el ${fechaHora(cfg.podcast_enviado)}. Desde entonces, cada nuevo inscrito lo recibe en su correo de confirmación.`)
+          : el('p', { class: 'apagado' }, 'Tras el primer envío, también irá en el correo de confirmación de cada nuevo inscrito.'),
+        escuchas.length ? el('p', {}, el('strong', {}, resumenPod)) : null,
+        escuchas.length ? el('div', { class: 'tabla-scroll' }, tablaPod) : el('p', { class: 'apagado' }, 'Aún no hay inscritos.'),
+        el('div', { class: 'botones' }, botonEnviar,
+          el('button', { class: 'boton peque fantasma', onclick: () => { marcas.forEach((c) => { if (!c.disabled) c.checked = true; }); contar(); } }, 'Marcar todos'),
+          el('button', { class: 'boton peque fantasma', onclick: () => { marcas.forEach((c) => { c.checked = false; }); contar(); } }, 'Ninguno')),
+        el('p', { class: 'apagado' }, 'Vienen marcados los que aún no lo han recibido.')
       ]));
+  contar();
 
   // Recordatorios de preparación: métrica y reglas de esta edición.
   const prep = d.preparacion[cfg.taller_id] || [];
