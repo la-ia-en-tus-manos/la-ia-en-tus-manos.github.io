@@ -543,6 +543,32 @@ async function pintarCorreos() {
       : el('div', { class: 'aviso atencion' }, el('strong', {}, 'Reloj de envíos sin activar. '),
         'Para que el envío programado y los recordatorios salgan aunque no abras el panel, actívalo una vez en Apps Script: Activadores (el reloj de la izquierda) → Añadir activador → función «revisarEnviosProgramados» → «Según el tiempo» → «Temporizador por horas» → cada 12 horas → Guardar. Mientras tanto, salen la primera vez que abras el panel después de la hora.')));
 
+  // Podcast del taller: resumen en audio en Drive; prueba, envío a todos y, desde entonces, en cada confirmación.
+  const pods = (d.podcast || {})[cfg.contenido] || {};
+  const pod = pods.es || pods['pt-BR'];
+  const apuntados = (d.apuntados || {})[cfg.taller_id] || 0;
+  const pruebaPod = el('input', { type: 'email', value: estado.config.responsable_correo || '', placeholder: 'tu correo' });
+  caja.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Podcast del taller'),
+    !pod
+      ? el('p', { class: 'apagado' }, 'Este taller no tiene podcast. Se sube con: node scripts/subir_podcast.mjs <audio> --taller ', cfg.contenido || 'taller1')
+      : [
+        el('p', { class: 'sub' }, el('strong', {}, `«${pod.titulo}»`), ` · ${pod.minutos} min · `, el('a', { href: pod.url, target: '_blank' }, 'Escucharlo en Drive'),
+          pods.es && pods['pt-BR'] ? ' · en español y portugués' : pods['pt-BR'] ? ' · solo en portugués' : ' · solo en español: a los alumnos de Brasil no les llega'),
+        el('p', {}, 'Un correo tipo newsletter con la imagen del podcast, lo que se va a escuchar y el botón para oírlo en Drive. Llega a los inscritos con plaza y en lista de espera.'),
+        el('div', { class: 'botones', style: 'align-items:center' }, pruebaPod,
+          el('button', { class: 'boton secundario', onclick: async () => {
+            try { await post('p_podcast', { k: clave, taller: cfg.taller_id, prueba: pruebaPod.value.trim() }); toast('Prueba enviada'); } catch (e) { toast(e.message, 'error'); }
+          } }, icono('LuSend'), 'Enviarme una prueba')),
+        cfg.podcast_enviado
+          ? el('div', { class: 'aviso ok' }, `Enviado a todos el ${fechaHora(cfg.podcast_enviado)}. Desde entonces, cada nuevo inscrito lo recibe en su correo de confirmación.`)
+          : el('p', { class: 'apagado' }, 'Cuando lo envíes a todos, también irá en el correo de confirmación de cada nuevo inscrito.'),
+        el('div', { class: 'botones' },
+          el('button', { class: 'boton c-gr', disabled: !apuntados, onclick: async () => {
+            if (!window.confirm(`¿Enviar el podcast a los ${apuntados} inscritos de ${cfg.taller_id}${cfg.podcast_enviado ? ' otra vez' : ''}?`)) return;
+            try { const r = await post('p_podcast', { k: clave, taller: cfg.taller_id }); toast(`Podcast enviado a ${r.enviados} de ${r.total}`); pintar(); } catch (e) { toast(e.message, 'error'); }
+          } }, icono('LuHeadphones'), `Enviar a ${apuntados} inscrito${apuntados === 1 ? '' : 's'}`))
+      ]));
+
   // Recordatorios de preparación: métrica y reglas de esta edición.
   const prep = d.preparacion[cfg.taller_id] || [];
   const sinPreparar = prep.filter((x) => x.hechas < x.total);
