@@ -1,5 +1,6 @@
 // Podcast del taller: se abre desde el correo (podcast.html?taller=…&t=…). Suena aquí y, con el token, anota
-// hasta qué porcentaje se ha escuchado, para que el profesor vea quién lo ha oído.
+// hasta qué porcentaje se ha escuchado, para que el profesor vea quién lo ha oído. El audio se sirve desde la web
+// (app/podcast/): Drive no deja reproducir sus archivos desde otra página (Cross-Origin-Resource-Policy).
 import { get, post, setTaller, tallerDeUrl } from './api.js';
 import { t, setIdioma } from './i18n.js';
 import { el, vaciar, icono, pintarIconos, cargarInicio, errorPantalla } from './ui.js';
@@ -30,7 +31,7 @@ async function cargar() {
   try { d = await get('podcast', token ? { t: token } : {}); } catch (e) { return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') }); }
   idioma = d.idioma === 'pt-BR' ? 'pt-BR' : 'es';
   setIdioma(idioma, false);
-  const audio = el('audio', { controls: true, preload: 'metadata', src: d.audio, style: 'width:100%;margin:12px 0' });
+  const audio = el('audio', { controls: true, preload: 'metadata', src: `podcast/${d.archivo}`, style: 'width:100%;margin:12px 0' });
   const alcanzado = () => {
     if (!audio.duration) return;
     const pct = (audio.currentTime / audio.duration) * 100;
@@ -40,14 +41,14 @@ async function cargar() {
   audio.addEventListener('play', () => anotar(1));
   audio.addEventListener('timeupdate', alcanzado);
   audio.addEventListener('ended', () => anotar(100));
-  vaciar(app).append(
+  vaciar(app).append(...[
     el('p', { class: 'sub', style: 'text-transform:uppercase;letter-spacing:.14em;font-size:.8rem;color:var(--acento)' }, d.taller),
     el('h1', {}, d.titulo),
     d.imagen ? el('img', { src: d.imagen, alt: d.titulo, style: 'width:100%;border-radius:16px;display:block;margin:8px 0' }) : null,
     el('div', { class: 'tarjeta' },
       el('p', {}, d.nombre ? `${tx('hola', { nombre: d.nombre })} ` : '', tx('intro', { minutos: d.minutos })),
       audio),
-    d.enlace ? el('a', { class: 'boton', href: d.enlace }, icono('LuArrowRight'), tx('taller')) : null);
+    d.enlace ? el('a', { class: 'boton', href: d.enlace }, icono('LuArrowRight'), tx('taller')) : null].filter(Boolean));
   pintarIconos(app);
 }
 
