@@ -818,6 +818,15 @@ function pintarInscritos() {
   app.append(el('div', { class: 'botones' },
     el('button', { class: 'boton', onclick: inscribirAMano }, icono('LuUserPlus'), 'Inscribir a mano'),
     el('button', { class: 'boton secundario', onclick: avisarTodos }, icono('LuMail'), 'Avisar por correo'),
+    (() => {
+      const con = lista.filter((i) => i.prorroga_vigente);
+      if (!con.length) return null;
+      return el('button', { class: 'boton secundario', onclick: async () => {
+        const fechas = [...new Set(con.map((i) => i.prorroga_hasta))].join(', ');
+        if (!window.confirm(`¿Enviar el aviso de la prórroga a los ${con.length} alumnos que la tienen (hasta ${fechas})?\n\nA los que no vinieron les dice que pueden hacer el taller por su cuenta; a los que lo dejaron a medias, que pueden terminarlo. A todos, que después de esa fecha el taller se cierra y se borran sus datos.`)) return;
+        try { const r = await post('p_prorroga_avisar', { k: clave, ids: con.map((i) => i.id) }); toast(`Aviso enviado a ${r.enviados} de ${r.total}`); } catch (e) { toast(e.message, 'error'); }
+      } }, icono('LuCalendarClock'), `Avisar a los ${con.length} con prórroga`);
+    })(),
     el('button', { class: 'boton secundario', onclick: async () => { try { const r = await get('p_csv', { k: clave }); descargarBlob(new Blob(['﻿' + r.csv], { type: 'text/csv;charset=utf-8' }), r.nombre); } catch (e) { toast(e.message, 'error'); } } }, icono('LuDownload'), 'Exportar CSV'),
     el('button', { class: 'boton fantasma', onclick: () => recargar(false) }, icono('LuRefreshCw'), 'Actualizar')));
   if (!lista.length) return app.append(el('p', { class: 'sub' }, 'Todavía no hay inscritos.'));
