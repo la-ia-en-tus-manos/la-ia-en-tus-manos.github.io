@@ -221,18 +221,29 @@ async function guardarConfig(cambios) {
 
 /* ───────────── En vivo ───────────── */
 
+// Última tabla recibida: en producción p_vivo tarda varios segundos y, sin ella, la pestaña se quedaba en blanco
+// tras cada acción (pintar() la vacía) hasta que llegaba la respuesta.
+let vivoGuardado = null;
+
 function pintarVivo() {
   const caja = el('div', {});
   app.append(caja);
+  if (vivoGuardado && vivoGuardado.taller === tallerActual()) pintarTablaVivo(caja, vivoGuardado.v);
+  else cargarInicio(caja, 'Cargando el taller en vivo…');
+  let enCurso = false;   // si la anterior aún no ha vuelto, no se pide otra: se amontonarían
   const refrescar = async () => {
+    if (enCurso) return;
+    enCurso = true;
+    const taller = tallerActual();
     try {
       const v = await get('p_vivo', { k: clave });
+      vivoGuardado = { taller, v };
       pintarTablaVivo(caja, v);
     } catch (e) {
       // Con clave mala o bloqueo, parar de insistir: cada intento fallido cuenta para el límite del servidor.
       if (e.codigo === 401 || e.codigo === 429) { if (vivoTimer) { vivoTimer.terminate(); vivoTimer = null; } clave = ''; sessionStorage.removeItem('profe_clave'); return pintarAcceso(e.message); }
       toast(e.message, 'error');
-    }
+    } finally { enCurso = false; }
   };
   refrescar();
   // Un worker sigue contando aunque la pestaña esté detrás del PowerPoint; un setInterval normal se frena.
@@ -428,7 +439,7 @@ async function medallaParaTodos(m, quitar, total) {
   try {
     const r = await post('p_medalla_todos', { k: clave, medalla: m.id, quitar });
     toast(quitar ? `Medalla ${m.nombre} retirada a ${r.cambiados}` : `Medalla ${m.nombre} dada a ${r.cambiados} alumnos`);
-    await recargar(); pintar();
+    pintar(); recargar();
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -437,14 +448,14 @@ async function jefeParaTodos(quitar, total) {
   try {
     const r = await post('p_jefe_todos', { k: clave, quitar });
     toast(quitar ? `Validación retirada a ${r.cambiados}` : `Jefe final validado a ${r.cambiados} alumnos`);
-    await recargar(); pintar();
+    pintar(); recargar();
   } catch (e) { toast(e.message, 'error'); }
 }
 
 function accionesAlumno(a) {
   const medallas = estado.contenido.medallas;
   const accion = async (datos, mensaje) => {
-    try { await post('p_inscrito', { k: clave, id: a.id, ...datos }); toast(mensaje || 'Hecho'); cerrar(); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
+    try { await post('p_inscrito', { k: clave, id: a.id, ...datos }); toast(mensaje || 'Hecho'); cerrar(); pintar(); recargar(); } catch (e) { toast(e.message, 'error'); }
   };
   const { cerrar } = modal([
     el('h2', {}, `N.º ${a.numero} · ${a.nombre}`),
