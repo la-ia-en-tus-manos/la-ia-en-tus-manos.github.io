@@ -510,6 +510,106 @@ function seccionProrroga(a, cerrar) {
 
 /* ───────────── Correos ───────────── */
 
+// Lista de novedades: antiguos alumnos que pidieron avisos y quieren seguir recibiendo podcasts, contenido y los
+// próximos talleres. Va aparte de las ediciones (no se borra con los datos del taller) y cada correo lleva la baja.
+function tarjetaBoletin(d, talleres) {
+  const b = d.boletin || { suscritos: [], candidatos: [] };
+  const activos = b.suscritos.filter((s) => !s.baja);
+  const bajas = b.suscritos.filter((s) => s.baja);
+  const campo = (etiqueta, nodo, ayuda) => el('label', { class: 'campo' }, el('span', {}, etiqueta), nodo, ayuda ? el('span', { class: 'ayuda' }, ayuda) : null);
+  const conPodcast = talleres.filter((c) => { const p = (d.podcast || {})[c.contenido] || {}; return p.es || p['pt-BR']; });
+  const nombreEd = (c) => `Taller ${c.numero_taller} · ${c.nivel} — ${c.taller_id}`;
+
+  // Quién está y su actividad.
+  const marcas = new Map();
+  const botonEnviar = el('button', { class: 'boton c-gr' });
+  const contar = () => {
+    const n = [...marcas.values()].filter((c) => c.checked).length;
+    botonEnviar.disabled = !n;
+    vaciar(botonEnviar).append(icono('LuSend'), `Enviar a ${n} de la lista`);
+    pintarIconos(botonEnviar);
+  };
+  const tabla = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, ''), el('th', {}, 'Persona'), el('th', {}, 'En la lista desde'), el('th', {}, 'Boletines'), el('th', {}, 'Podcast'), el('th', {}, ''))),
+    el('tbody', {}, ...activos.map((s) => {
+      const casilla = el('input', { type: 'checkbox', checked: true, onchange: contar });
+      marcas.set(s.id, casilla);
+      return el('tr', {}, el('td', {}, casilla),
+        el('td', {}, s.nombre, el('br'), el('small', { class: 'apagado' }, s.correo, s.idioma === 'pt-BR' ? ' · Brasil' : '', s.origen ? ` · ${s.origen}` : '')),
+        el('td', {}, el('small', {}, fechaHora(s.alta))),
+        el('td', {}, s.envios ? el('small', {}, `${s.envios} · último ${fechaHora(s.ultimo_envio)}`) : el('small', { class: 'apagado' }, 'ninguno')),
+        el('td', {}, s.avance >= 100 ? el('span', { class: 'chip c-gr' }, 'entero') : s.avance > 0 ? el('small', {}, `${s.avance} %`) : el('small', { class: 'apagado' }, s.abierto ? 'abierto, sin ▶' : '—')),
+        el('td', {}, el('button', { class: 'boton peque fantasma', onclick: async () => {
+          if (!window.confirm(`¿Quitar a ${s.nombre} de la lista? No se le avisa.`)) return;
+          try { await post('p_boletin_quitar', { k: clave, id: s.id }); toast('Quitado de la lista'); pintar(); } catch (e) { toast(e.message, 'error'); }
+        } }, 'Quitar')));
+    })));
+
+  // Apuntar: inscritos con plaza que no están (vienen marcados los que terminaron el taller y pidieron avisos).
+  const altas = new Map();
+  const candidatos = el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, ''), el('th', {}, 'Alumno'), el('th', {}, 'Taller'), el('th', {}, ''))),
+    el('tbody', {}, ...b.candidatos.map((x) => {
+      const casilla = el('input', { type: 'checkbox', disabled: !x.avisos, title: x.avisos ? '' : 'No marcó «avísame de los próximos talleres»' });
+      casilla.checked = x.avisos && x.termino;
+      altas.set(x.id, casilla);
+      return el('tr', {}, el('td', {}, casilla),
+        el('td', {}, x.numero ? el('strong', {}, `${x.numero} `) : null, x.nombre, el('br'), el('small', { class: 'apagado' }, x.correo, x.idioma === 'pt-BR' ? ' · Brasil' : '')),
+        el('td', {}, el('small', {}, x.edicion)),
+        el('td', {}, x.termino ? el('span', { class: 'chip c-gr' }, 'terminó') : null, ' ', x.avisos ? null : el('span', { class: 'chip' }, 'no pidió avisos')));
+    })));
+  const apuntar = el('button', { class: 'boton secundario', onclick: async () => {
+    const ids = b.candidatos.filter((x) => altas.get(x.id)?.checked).map((x) => x.id);
+    if (!ids.length) return toast('Marca a quién apuntar', 'error');
+    if (!window.confirm(`¿Apuntar a ${ids.length} persona${ids.length === 1 ? '' : 's'} a la lista? Cada una recibe un correo de bienvenida con el enlace para darse de baja.`)) return;
+    try { const r = await post('p_boletin_alta', { k: clave, ids }); toast(`${r.altas} apuntado${r.altas === 1 ? '' : 's'} · ${r.correos} bienvenida${r.correos === 1 ? '' : 's'} enviada${r.correos === 1 ? '' : 's'}`); pintar(); }
+    catch (e) { toast(e.message, 'error'); }
+  } }, icono('LuUserPlus'), 'Apuntar a los marcados');
+
+  // Escribir y enviar.
+  const asunto = el('input', { type: 'text', placeholder: 'Ej.: Nuevo podcast: cómo pedirle a la IA que te lea una carta' });
+  const texto = el('textarea', { rows: 8, placeholder: 'Hola, {nombre}:\n\nTe escribimos porque…' });
+  const asuntoPt = el('input', { type: 'text' });
+  const textoPt = el('textarea', { rows: 8 });
+  const podcast = el('select', {}, el('option', { value: '' }, 'Sin podcast'), ...conPodcast.map((c) => el('option', { value: c.taller_id }, `El podcast del ${nombreEd(c)}`)));
+  const anuncio = el('select', {}, el('option', { value: '' }, 'Sin anunciar un taller'), ...talleres.map((c) => el('option', { value: c.taller_id },
+    `${nombreEd(c)} (${NOMBRE_ESTADO[c.estado] || c.estado}${c.fecha ? ` · ${c.fecha}` : ''})`)));
+  const contenido = () => ({ asunto: asunto.value.trim(), texto: texto.value.trim(), asunto_pt: asuntoPt.value.trim(), texto_pt: textoPt.value.trim(), podcast: podcast.value, anuncio: anuncio.value });
+  const prueba = el('input', { type: 'email', value: estado.config.responsable_correo || '', placeholder: 'tu correo' });
+  const idiomaPrueba = el('select', {}, el('option', { value: 'es' }, 'en español'), el('option', { value: 'pt-BR' }, 'en portugués'));
+  botonEnviar.onclick = async () => {
+    const ids = activos.filter((s) => marcas.get(s.id)?.checked).map((s) => s.id);
+    if (!asunto.value.trim() || !texto.value.trim()) return toast('Escribe el asunto y el texto', 'error');
+    const sinPt = activos.filter((s) => ids.includes(s.id) && s.idioma === 'pt-BR').length && !(asuntoPt.value.trim() && textoPt.value.trim());
+    if (!window.confirm(`¿Enviar «${asunto.value.trim()}» a ${ids.length} persona${ids.length === 1 ? '' : 's'} de la lista?${sinPt ? '\n\nHay personas de Brasil y no has escrito la versión en portugués: les llegará en español.' : ''}`)) return;
+    try { const r = await post('p_boletin', { k: clave, ...contenido(), ids }); toast(`Enviado a ${r.enviados} de ${r.total}`); pintar(); } catch (e) { toast(e.message, 'error'); }
+  };
+
+  const tarjeta = el('div', { class: 'tarjeta' }, el('h2', {}, 'Lista de novedades'),
+    el('p', { class: 'sub' }, 'Antiguos alumnos que quieren seguir al tanto: podcasts nuevos, contenido relacionado con el taller y los próximos talleres, sin vender nada. Solo puede entrar quien marcó «avísame de los próximos talleres». La lista no se borra con los datos del taller (solo guarda nombre, correo e idioma); quien pide borrar sus datos sale también de ella, y cada correo lleva el enlace para darse de baja.'),
+    el('h3', {}, `En la lista: ${activos.length}`, bajas.length ? el('small', { class: 'apagado' }, ` · ${bajas.length} se dieron de baja`) : null),
+    activos.length ? el('div', { class: 'tabla-scroll' }, tabla) : el('p', { class: 'apagado' }, 'Aún no hay nadie.'),
+    el('details', { class: 'seccion-config', open: !activos.length }, el('summary', {}, `Apuntar a la lista (${b.candidatos.filter((x) => x.avisos).length} pueden entrar)`),
+      b.candidatos.length ? [el('div', { class: 'tabla-scroll' }, candidatos), el('div', { class: 'botones' }, apuntar),
+        el('p', { class: 'apagado' }, 'Vienen marcados los que terminaron el taller y pidieron avisos. Los que no marcaron la casilla no se pueden apuntar.')]
+        : el('p', { class: 'apagado' }, 'No queda ningún alumno con plaza fuera de la lista.')),
+    activos.length ? [
+      el('h3', { style: 'margin-top:18px' }, 'Escribir un boletín'),
+      campo('Asunto', asunto),
+      campo('Texto', texto, '{nombre} se cambia por el nombre de cada persona. Deja una línea en blanco entre párrafos; las direcciones web salen como enlace.'),
+      el('details', { class: 'seccion-config' }, el('summary', {}, 'Versión en portugués (para los de Brasil)'), campo('Asunto', asuntoPt), campo('Texto', textoPt)),
+      campo('Podcast', podcast, 'Añade la imagen y el botón para escucharlo; la tabla de arriba dice quién lo oye.'),
+      campo('Anunciar un taller', anuncio, 'Añade la fecha y el botón para inscribirse.'),
+      el('div', { class: 'botones', style: 'align-items:center' }, prueba, idiomaPrueba,
+        el('button', { class: 'boton secundario', onclick: async () => {
+          try { await post('p_boletin', { k: clave, ...contenido(), prueba: prueba.value.trim(), idioma_prueba: idiomaPrueba.value }); toast('Prueba enviada'); } catch (e) { toast(e.message, 'error'); }
+        } }, icono('LuSend'), 'Enviarme una prueba')),
+      el('div', { class: 'botones' }, botonEnviar,
+        el('button', { class: 'boton peque fantasma', onclick: () => { marcas.forEach((c) => { c.checked = true; }); contar(); } }, 'Marcar todos'),
+        el('button', { class: 'boton peque fantasma', onclick: () => { marcas.forEach((c) => { c.checked = false; }); contar(); } }, 'Ninguno'))
+    ] : null);
+  contar();
+  return tarjeta;
+}
+
 let correosEdicion = null;   // edición elegida en la pestaña Correos (independiente de la de arriba)
 
 async function pintarCorreos() {
@@ -647,6 +747,7 @@ async function pintarCorreos() {
         el('p', { class: 'apagado' }, 'Vienen marcados los que aún no lo han recibido.')
       ]));
   contar();
+  caja.append(tarjetaBoletin(d, lista));
 
   // Recordatorios de preparación: métrica y reglas de esta edición.
   const prep = d.preparacion[cfg.taller_id] || [];

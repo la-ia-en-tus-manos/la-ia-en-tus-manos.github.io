@@ -7,6 +7,7 @@ import { el, vaciar, icono, pintarIconos, cargarInicio, errorPantalla } from './
 
 const app = document.getElementById('app');
 const token = new URLSearchParams(location.search).get('t') || '';
+const suscrito = token ? '' : new URLSearchParams(location.search).get('s') || '';   // de la lista de novedades
 
 const TEXTOS = {
   es: { hola: 'Hola, {nombre}.', intro: 'Pulsa ▶ para escucharlo. Son {minutos} minutos: puedes pararlo cuando quieras y seguir luego.', taller: 'Ir a mi taller' },
@@ -19,16 +20,16 @@ const tx = (k, v = {}) => Object.entries(v).reduce((s, [a, b]) => s.split(`{${a}
 const HITOS = [1, 25, 50, 75, 100];
 let anotado = 0;
 function anotar(avance) {
-  if (!token || avance <= anotado) return;
+  if ((!token && !suscrito) || avance <= anotado) return;
   anotado = avance;
-  post('podcast_escucha', { t: token, avance }).catch(() => { anotado = 0; });
+  post('podcast_escucha', { ...(token ? { t: token } : { s: suscrito }), avance }).catch(() => { anotado = 0; });
 }
 
 async function cargar() {
   setTaller(tallerDeUrl());
   cargarInicio(app, t('cargando'));
   let d;
-  try { d = await get('podcast', token ? { t: token } : {}); } catch (e) { return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') }); }
+  try { d = await get('podcast', token ? { t: token } : suscrito ? { s: suscrito } : {}); } catch (e) { return errorPantalla(app, e.message, () => cargar(), { titulo: t('algo_mal'), reintentar: t('reintentar') }); }
   idioma = d.idioma === 'pt-BR' ? 'pt-BR' : 'es';
   setIdioma(idioma, false);
   const audio = el('audio', { controls: true, preload: 'metadata', src: `podcast/${d.archivo}`, style: 'width:100%;margin:12px 0' });
