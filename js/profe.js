@@ -205,9 +205,10 @@ function modalNuevoTaller(contenido) {
 
 async function guardarConfig(cambios) {
   if (cambios.estado === 'terminado' && estado.config.estado !== 'terminado') {
-    const n = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !i.diploma_enviado && !i.prorroga_vigente).length;
+    const n = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !i.diploma_enviado && !i.prorroga_vigente && participo(i)).length;
+    const sin = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !participo(i)).length;
     const pro = (estado.inscritos || []).filter((i) => i.prorroga_vigente).length;
-    if (!window.confirm(`Al terminar el taller se envía el diploma por correo a ${n} alumno${n === 1 ? '' : 's'} con plaza, con el enlace para repetir las misiones en casa.${pro ? ` ${pro} con prórroga lo recibirá${pro === 1 ? '' : 'n'} al acabarla.` : ''} ¿Terminar el taller?`)) return;
+    if (!window.confirm(`Al terminar el taller se envía el diploma por correo a ${n} alumno${n === 1 ? '' : 's'} con plaza, con el enlace para repetir las misiones en casa.${pro ? ` ${pro} con prórroga lo recibirá${pro === 1 ? '' : 'n'} al acabarla.` : ''}${sin ? ` ${sin} sin ninguna misión no lo recibirá${sin === 1 ? '' : 'n'}.` : ''} ¿Terminar el taller?`)) return;
   }
   try {
     const r = await post('p_config', { k: clave, config: cambios });
@@ -475,6 +476,9 @@ function accionesAlumno(a) {
     seccionProrroga(a, () => cerrar())
   ]);
 }
+
+// Hizo el taller (al menos una misión o el jefe final): solo a ellos les llega el diploma automáticamente.
+function participo(i) { return i.jefe || (i.misiones || []).length > 0; }
 
 // Etiqueta de la prórroga: vigente (hasta cuándo) o ya acabada.
 function chipProrroga(a) {
@@ -798,7 +802,7 @@ function pintarDiplomas() {
   const medallas = estado.contenido.medallas;
   const lista = estado.inscritos.filter((i) => i.estado === 'plaza');
   const ids = lista.map((i) => i.id).join(',');
-  const pendientes = lista.filter((i) => !i.diploma_enviado && !i.prorroga_vigente);
+  const pendientes = lista.filter((i) => !i.diploma_enviado && !i.prorroga_vigente && participo(i));
   const enviarDiplomas = async (repetir) => {
     if (!window.confirm(repetir ? `¿Reenviar el diploma por correo a los ${lista.length} alumnos con plaza?` : `¿Enviar el diploma por correo a ${pendientes.length} alumnos?`)) return;
     try { const r = await post('p_diplomas_correo', { k: clave, repetir }); toast(`Enviados ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
@@ -823,7 +827,7 @@ function pintarDiplomas() {
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.codigo_nivel ? el('code', {}, i.codigo_nivel) : el('span', { class: 'apagado' }, '—')),
-      el('td', {}, i.prorroga_vigente ? chipProrroga(i) : i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
+      el('td', {}, i.prorroga_vigente ? chipProrroga(i) : !i.diploma_enviado && !participo(i) ? [el('span', { class: 'chip c-rd', title: 'No ha hecho ninguna misión: no recibe el diploma automáticamente' }, 'sin misiones'), ' ', el('button', { class: 'boton peque fantasma', onclick: async () => { if (!window.confirm(`${i.nombre} no ha hecho ninguna misión. ¿Enviarle el diploma igualmente?`)) return; try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar igualmente')] : i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
       el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
   tabla.append(cuerpo);
