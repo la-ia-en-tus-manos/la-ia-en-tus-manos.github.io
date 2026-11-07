@@ -62,7 +62,7 @@ function programarRefresco() {
       if (guardando) return;
       const jefeNuevo = !estado.alumno.jefe && nuevo.alumno.jefe && nuevo.config.estado === 'taller_en_curso';
       const cambioFase = nuevo.config.estado !== estado.config.estado || nuevo.alumno.estado !== estado.alumno.estado;
-      const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha]);
+      const huella = (e) => JSON.stringify([e.progreso, e.alumno.ayuda, e.alumno.jefe, e.alumno.modo, e.alumno.idioma, e.config, e.encuesta_hecha, e.prorroga]);
       const cambio = huella(nuevo) !== huella(estado);
       const mensajesAntes = estado.mensajes || [];
       estado = nuevo;
@@ -319,6 +319,10 @@ function pintarTaller() {
   const k = c.kit;
   const prog = estado.progreso;
   app.append(cabeceraAlumno());
+  if (estado.prorroga) {
+    const fecha = new Date(`${estado.prorroga.hasta}T12:00:00`).toLocaleDateString(idiomaActual() === 'pt-BR' ? 'pt-BR' : 'es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    app.append(el('div', { class: 'aviso atencion' }, icono('LuCalendarClock'), ' ', t('prorroga_aviso', { fecha })));
+  }
   app.append(el('p', { class: 'apagado' }, icono(ICONO_MODO[estado.alumno.modo]), ' ', nombreModo(estado.alumno.modo), ' · ', el('a', { href: '#', onclick: (e) => { e.preventDefault(); elegirModo(); } }, t('cambiar'))));
 
   const reunion = botonReunion();
@@ -636,13 +640,15 @@ function pintarMision(id, repaso = false) {
     if (cumplida) cierre.append(el('div', { class: 'aviso ok' }, el('strong', {}, t('jefe_superado')), t('jefe_validado')));
     else {
       const f = el('form', { class: 'botones', style: 'align-items:stretch' });
-      const inp = el('input', { type: 'text', placeholder: t('codigo_profesor'), autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
+      // Con prórroga, la app da el código del jefe final en cuanto están todas las misiones hechas.
+      const codigoProrroga = estado.prorroga?.jefe_codigo || '';
+      const inp = el('input', { type: 'text', value: codigoProrroga, placeholder: t('codigo_profesor'), autocomplete: 'off', autocapitalize: 'none', style: 'flex:1;min-width:160px' });
       f.append(inp, el('button', { class: 'boton c-ye', type: 'submit' }, icono('LuCrown'), t('validar')));
       f.addEventListener('submit', async (e) => {
         e.preventDefault();
         try { await post('jefe', { t: token, codigo: inp.value }); estado.alumno.jefe = true; toast(t('jefe_superado')); pintar(); } catch (err) { toast(err.message, 'error'); }
       });
-      cierre.append(el('p', { class: 'apagado' }, t('jefe_txt')), f);
+      cierre.append(el('p', { class: 'apagado' }, codigoProrroga ? t('jefe_prorroga', { codigo: codigoProrroga }) : t('jefe_txt')), f);
     }
   } else {
     cierre.append(el('button', { class: `boton grande bloque ${cumplida ? 'secundario' : ''} c-gr`, onclick: async () => {

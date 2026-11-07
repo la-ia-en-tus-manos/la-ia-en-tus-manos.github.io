@@ -205,8 +205,9 @@ function modalNuevoTaller(contenido) {
 
 async function guardarConfig(cambios) {
   if (cambios.estado === 'terminado' && estado.config.estado !== 'terminado') {
-    const n = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !i.diploma_enviado).length;
-    if (!window.confirm(`Al terminar el taller se envía el diploma por correo a ${n} alumno${n === 1 ? '' : 's'} con plaza, con el enlace para repetir las misiones en casa. ¿Terminar el taller?`)) return;
+    const n = (estado.inscritos || []).filter((i) => i.estado === 'plaza' && !i.diploma_enviado && !i.prorroga_vigente).length;
+    const pro = (estado.inscritos || []).filter((i) => i.prorroga_vigente).length;
+    if (!window.confirm(`Al terminar el taller se envía el diploma por correo a ${n} alumno${n === 1 ? '' : 's'} con plaza, con el enlace para repetir las misiones en casa.${pro ? ` ${pro} con prórroga lo recibirá${pro === 1 ? '' : 'n'} al acabarla.` : ''} ¿Terminar el taller?`)) return;
   }
   try {
     const r = await post('p_config', { k: clave, config: cambios });
@@ -407,7 +408,7 @@ function pintarTablaVivo(caja, v) {
   todos.forEach((a) => {
     const fila = el('tr', { class: a.ayuda ? 'ayuda' : '' },
       el('td', {}, el('strong', {}, a.numero)),
-      el('td', {}, el('strong', {}, a.nombre), el('br'), el('small', { class: 'apagado' }, NOMBRE_MODO[a.modo], a.idioma && a.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[a.idioma] || a.idioma}` : '', a.ayuda ? ' · ¡AYUDA!' : '')),
+      el('td', {}, el('strong', {}, a.nombre), chipProrroga(a), el('br'), el('small', { class: 'apagado' }, NOMBRE_MODO[a.modo], a.idioma && a.idioma !== 'es' ? ` · ${NOMBRE_IDIOMA[a.idioma] || a.idioma}` : '', a.ayuda ? ' · ¡AYUDA!' : '')),
       el('td', {}, el('div', { class: 'sellos' }, ...misiones.map((m) => el('span', { class: `c-${m.color} ${a.misiones.includes(m.id) ? 'si' : ''}`, title: m.titulo }, m.id.replace('M', ''))))),
       el('td', {}, el('div', { class: 'sellos' }, ...medallas.map((m) => el('span', { class: `c-${m.color} ${a.medallas.includes(m.id) ? 'si' : ''}`, title: m.nombre }, m.nombre[0])))),
       el('td', {}, a.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
@@ -459,8 +460,37 @@ function accionesAlumno(a) {
     el('div', { class: 'botones' }, ...estado.contenido.misiones.filter((m) => m.id !== 'JEFE').map((m) => {
       const tiene = a.misiones.includes(m.id);
       return el('button', { class: `boton peque ${tiene ? '' : 'fantasma'} c-${m.color}`, onclick: () => accion({ accion: 'mision', mision: m.id, quitar: tiene }) }, m.id);
-    }))
+    })),
+    seccionProrroga(a, () => cerrar())
   ]);
+}
+
+// Etiqueta de la prórroga: vigente (hasta cuándo) o ya acabada.
+function chipProrroga(a) {
+  if (!a.prorroga_hasta) return null;
+  const fecha = new Date(`${a.prorroga_hasta}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  return el('span', { class: `chip ${a.prorroga_vigente ? 'c-ye' : ''}`, style: 'margin-left:6px', title: 'Prórroga para terminar el taller' }, a.prorroga_vigente ? `prórroga hasta ${fecha}` : `prórroga acabada (${fecha})`);
+}
+
+// Prórroga: para quien tuvo que dejar el taller a medias. Con el taller terminado, su app sigue «en curso» hasta la
+// fecha (por defecto, dentro de 7 días); el diploma le llega al hacer su cierre o, si no, al acabar la prórroga.
+function seccionProrroga(a, cerrar) {
+  if (a.demo || (a.estado && a.estado !== 'plaza')) return null;
+  const enSiete = new Date(Date.now() + 7 * 86400000);
+  const porDefecto = `${enSiete.getFullYear()}-${String(enSiete.getMonth() + 1).padStart(2, '0')}-${String(enSiete.getDate()).padStart(2, '0')}`;
+  const fecha = el('input', { type: 'date', value: a.prorroga_hasta || porDefecto, style: 'width:auto' });
+  const guardar = async (hasta) => {
+    try {
+      const r = await post('p_prorroga', { k: clave, id: a.id, hasta });
+      toast(hasta ? `Prórroga hasta el ${hasta.split('-').reverse().join('/')}${r.correo ? ' · aviso enviado por correo' : ''}` : 'Prórroga quitada');
+      cerrar(); await recargar(); pintar();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  return el('div', {}, el('h3', { style: 'margin-top:14px' }, 'Prórroga para terminar', chipProrroga(a)),
+    el('p', { class: 'apagado', style: 'margin:0 0 8px' }, 'Para quien tuvo que dejar el taller a medias. Aunque pongas el taller en «Terminado», su app sigue en marcha hasta esa fecha. El diploma le llega al hacer su cierre o, si no termina, al acabar la prórroga, con lo que tenga. Le avisamos por correo y le recordamos el plazo dos días antes.'),
+    el('div', { class: 'botones', style: 'align-items:center' }, fecha,
+      el('button', { class: 'boton c-ye', onclick: () => fecha.value ? guardar(fecha.value) : toast('Elige la fecha', 'error') }, icono('LuCalendarClock'), a.prorroga_hasta ? 'Cambiar la fecha' : 'Dar prórroga'),
+      a.prorroga_hasta ? el('button', { class: 'boton peque fantasma', onclick: () => guardar('') }, 'Quitar la prórroga') : null));
 }
 
 /* ───────────── Correos ───────────── */
@@ -688,7 +718,7 @@ function pintarInscritos() {
       el('td', {}, el('small', {}, NOMBRE_MODO[i.modo], el('br'), el('span', { class: 'chip' }, NOMBRE_IDIOMA[i.idioma] || i.idioma), ' ',
         i.estado === 'plaza' ? el('span', { class: `chip ${i.personaje !== 'x' && i.genero_kit !== i.personaje ? 'c-rd' : 'c-gr'}`, title: `prefiere: ${NOMBRE_GENERO[i.personaje]}` }, `personaje ${NOMBRE_GENERO[i.genero_kit]}`) : el('small', { class: 'apagado' }, `prefiere ${NOMBRE_GENERO[i.personaje]}`))),
       el('td', {}, i.estado === 'plaza' ? [el('div', { class: 'barra', style: 'width:90px' }, el('div', { style: `width:${Math.round(100 * i.previas / Math.max(1, i.previas_total))}%` })), el('small', {}, `${i.previas} de ${i.previas_total}`)] : ''),
-      el('td', {}, el('span', { class: `chip c-${color}` }, i.estado)),
+      el('td', {}, el('span', { class: `chip c-${color}` }, i.estado), chipProrroga(i)),
       el('td', {}, el('button', { class: 'boton peque secundario', onclick: () => accionesInscrito(i) }, 'Acciones'))));
   });
   tabla.append(cuerpo);
@@ -716,7 +746,8 @@ function accionesInscrito(i) {
     i.estado === 'plaza' ? el('h3', { style: 'margin-top:14px' }, `Personaje (prefiere ${NOMBRE_GENERO[i.personaje]})`) : null,
     i.estado === 'plaza' ? el('div', { class: 'botones' }, ...['f', 'm'].map((g) => el('button', { class: `boton peque ${i.genero_kit === g ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'genero_kit', genero: g }, 'Personaje cambiado') }, NOMBRE_GENERO[g]))) : null,
     el('h3', { style: 'margin-top:14px' }, 'Idioma'),
-    el('div', { class: 'botones' }, ...(estado.contenido.idiomas || ['es']).map((id) => el('button', { class: `boton peque ${i.idioma === id ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'idioma', idioma: id }, 'Idioma cambiado') }, NOMBRE_IDIOMA[id] || id)))
+    el('div', { class: 'botones' }, ...(estado.contenido.idiomas || ['es']).map((id) => el('button', { class: `boton peque ${i.idioma === id ? '' : 'fantasma'}`, onclick: () => accion({ accion: 'idioma', idioma: id }, 'Idioma cambiado') }, NOMBRE_IDIOMA[id] || id))),
+    seccionProrroga(i, () => cerrar())
   ]);
 }
 
@@ -756,7 +787,7 @@ function pintarDiplomas() {
   const medallas = estado.contenido.medallas;
   const lista = estado.inscritos.filter((i) => i.estado === 'plaza');
   const ids = lista.map((i) => i.id).join(',');
-  const pendientes = lista.filter((i) => !i.diploma_enviado);
+  const pendientes = lista.filter((i) => !i.diploma_enviado && !i.prorroga_vigente);
   const enviarDiplomas = async (repetir) => {
     if (!window.confirm(repetir ? `¿Reenviar el diploma por correo a los ${lista.length} alumnos con plaza?` : `¿Enviar el diploma por correo a ${pendientes.length} alumnos?`)) return;
     try { const r = await post('p_diplomas_correo', { k: clave, repetir }); toast(`Enviados ${r.enviados} de ${r.total}`); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); }
@@ -781,7 +812,7 @@ function pintarDiplomas() {
       el('td', {}, i.jefe ? el('span', { class: 'chip c-ye' }, '★ sí') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.encuesta ? el('span', { class: 'chip c-gr' }, 'hecha') : el('span', { class: 'apagado' }, 'no')),
       el('td', {}, i.codigo_nivel ? el('code', {}, i.codigo_nivel) : el('span', { class: 'apagado' }, '—')),
-      el('td', {}, i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
+      el('td', {}, i.prorroga_vigente ? chipProrroga(i) : i.diploma_enviado ? el('span', { class: 'chip c-gr', title: i.diploma_enviado }, `enviado ${fechaHora(i.diploma_enviado)}`) : el('button', { class: 'boton peque fantasma', onclick: async () => { try { await post('p_inscrito', { k: clave, id: i.id, accion: 'diploma' }); toast('Diploma enviado'); await recargar(); pintar(); } catch (e) { toast(e.message, 'error'); } } }, icono('LuMail'), 'Enviar')),
       el('td', {}, el('a', { class: 'boton peque secundario c-ye', href: `certificado.html?id=${encodeURIComponent(i.id)}&taller=${encodeURIComponent(tallerActual())}#k=${encodeURIComponent(clave)}`, target: '_blank' }, icono('LuAward'), 'Ver diploma'))));
   });
   tabla.append(cuerpo);
