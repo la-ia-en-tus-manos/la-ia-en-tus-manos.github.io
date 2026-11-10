@@ -128,7 +128,7 @@ function pintarInicio() {
     el('div', { class: 'tarjeta kpi c-cy' }, el('b', {}, `${oc.plaza}/${plazas}`), el('small', {}, 'plazas ocupadas')),
     el('div', { class: 'tarjeta kpi c-ye' }, el('b', {}, `${oc.espera}/${cfg.max_espera}`), el('small', {}, 'en lista de espera')),
     el('div', { class: 'tarjeta kpi c-gr' }, el('b', {}, estado.inscritos.filter((i) => i.estado === 'plaza' && i.previas === i.previas_total).length), el('small', {}, 'preparados del todo')),
-    el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
+    el('div', { class: 'tarjeta kpi c-bl' }, el('b', {}, estado.encuestas_total ?? estado.inscritos.filter((i) => i.encuesta).length), el('small', {}, 'encuestas recibidas'))));
 }
 
 // Alumno de pega del profesor: abre la app como un participante con el kit elegido, sin ocupar plaza ni contar.
@@ -1099,7 +1099,7 @@ function pintarDatos() {
     el('p', {}, el('strong', {}, 'Inscritos por taller: '), Object.entries(estado.ediciones || {}).map(([e, n]) => `${e} ${n}`).join(' · ') || 'ninguno')));
   const para = el('input', { type: 'email', placeholder: 'tu@correo.es' });
   app.append(el('div', { class: 'tarjeta' }, el('h2', {}, 'Probar el envío de correo'), el('div', { class: 'botones' }, para, el('button', { class: 'boton secundario', onclick: async () => { try { const r = await post('p_prueba_correo', { k: clave, para: para.value }); toast(r.enviado ? 'Correo enviado' : 'No se pudo enviar (¿sin cuota?)', r.enviado ? 'ok' : 'error'); } catch (e) { toast(e.message, 'error'); } } }, 'Enviar prueba'))));
-  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos, progreso y encuestas de este taller (cada alumno recibe un último correo con su diploma en PDF); los demás talleres se conservan para comprobar quién hizo el nivel anterior. La configuración se mantiene. Ojo: si lo borras, sus alumnos ya no podrán inscribirse en el taller siguiente.`),
+  app.append(el('div', { class: 'tarjeta c-rd' }, el('h2', {}, `Borrar los datos de «${estado.config.taller_id}»`), el('p', { class: 'sub' }, `Al terminar el taller y entregar los diplomas. Borra inscritos y progreso de este taller (cada alumno recibe un último correo con su diploma en PDF); las encuestas se conservan, sin datos de quién las hizo; los demás talleres se conservan para comprobar quién hizo el nivel anterior. La configuración se mantiene. Ojo: si lo borras, sus alumnos ya no podrán inscribirse en el taller siguiente.`),
     el('button', { class: 'boton peligro', onclick: async () => {
       const texto = window.prompt('Escribe BORRAR para confirmar');
       if (texto === null) return;
